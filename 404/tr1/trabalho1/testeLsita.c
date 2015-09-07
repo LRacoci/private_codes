@@ -4,36 +4,11 @@
 #include "Data.h"
 #include "List.h"
 
-void __int_print(Info i){
-    printf("%8d", *(int*)(i));
-}
-void __int_free(Info i){
-    free(i);
-}
-Info __int_copy(Info i){
-    Info resp = malloc(sizeof(int));
-    *(int*)resp = *(int*)i;
-    return resp;
-}
-void __List_print(Data d){
-    print_list(d->info);
-}
-void __List_free(Info i){
-    free_list(i);
-}
-Info __List_copy(Info i){
-    return copy_list(i);
-}
+
 void mop_exaple(Data d){
     *(int*) d->info *= 47;
 }
-#define new(v, type) new_data( \
-    __ ## type ## _copy(&(v)), \
-    sizeof(type), \
-    __ ## type ## _free, \
-    __ ## type ## _copy, \
-    __ ## type ## _print \
-);
+
 
 short int __int_comp(Info a, Info b){
     return *(int*)a == *(int*)b ? 0 : *(int*)a > *(int*)b ? 1 : -1;

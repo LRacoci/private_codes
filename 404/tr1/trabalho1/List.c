@@ -41,13 +41,13 @@ NoL get_relative_node(int relative_index, NoL axis){
         for(
             i = 0, n = axis;
             i < relative_index;
-            i++, n = n->dir->head ? n->dir->dir : n->dir
+            i++, n = n->dir
         );
     }else{
         for(
             i = 0, n = axis;
             i > relative_index;
-            i--, n = n->esq->head ? n->esq->esq : n->esq
+            i--, n = n->esq
         );
     }
     return n;
@@ -92,9 +92,11 @@ void put_node_list(List l, int index, NoL new){
     insert_node(index, new, l->head);
     l->size++;
 }
+
 NoL get_node_list(List l, int index){
     return get_relative_node(index, l->head);
 }
+
 void switch_node_list(List l, NoL a, NoL b){
     NoL aux;
     a->dir->esq = a->esq->dir = b;
@@ -103,25 +105,23 @@ void switch_node_list(List l, NoL a, NoL b){
     aux = a->esq; a->esq = b->esq; b->esq = aux;
 
 }
+
 void put_list(List l, int index, Data d){
     put_node_list(l, index, new_node(false, d, NULL, NULL));
 }
+
 void put_list_sorted(List l, Data d, func_comp infocmp, bool inc){
     NoL n;
     short int factor = inc ? -1 : 1;
     for(
         n = list_get_first(l);
-        !list_end(n) && (factor * comp_data(d, n->data, infocmp) > 0);
+        !list_end(n) && ( (factor * comp_data(d, n->data, infocmp) ) < 0);
         n = list_get_next(n)
     );
-    printf("a = %d, b = %d\n",*(int*)(d->info), *(int*)(n->data->info));
-    printf("factor: %d; comp = %d\n", factor, comp_data(d, n->data, infocmp));
-
     insert_node(-1, new_node(false, d, NULL, NULL), n);
 }
-void sort_list(List l, func_comp icmp, bool inc){
 
-}
+
 Data get_list(List l, int index){
     NoL n = get_relative_node(index, l->head);
     return n->data;
@@ -138,7 +138,6 @@ void free_list(List l) {
     }
     free_node(l->head);
     free(l);
-
 }
 NoL list_get_first(List l){
     return l->head->dir;
@@ -149,6 +148,7 @@ NoL list_get_next(NoL n){
 bool list_end(NoL n){
     return n->head;
 }
+
 List copy_list(List src){
     List resp = new_list();
     NoL n;
@@ -162,9 +162,50 @@ List copy_list(List src){
     }
     return resp;
 }
-void mod_list(List src, func_mod mod){
-    NoL n;
 
+bool is_in_list(List l, Data d, func_comp infocmp){
+    NoL n;
+    bool flag = false;
+    for_in(l, n, !flag,
+        flag |= (data_comp(n->data, d) == 0);
+    )
+    /*
+    for (
+        n = list_get_first(l);
+        !list_end(n) && !flag;
+        n = list_get_next(n)
+    ){
+        flag |= data_comp(n->data, d) == 0;
+    }
+    */
+    return flag;
+}
+
+bool for_in_list(List l, func_filter have_propertie){
+    bool flag = false;
+
+    NoL n;
+    for_in(l, n, !flag,
+        flag |= have_propertie(n->data);
+    )
+    /*
+    for (
+        n = list_get_first(l);
+        !list_end(n) && !flag;
+        n = list_get_next(n)
+    ){
+        flag |= have_propertie(n->data);
+    }
+    */
+    return flag;
+}
+
+void mod_list(List src, func_mod mod){
+
+    for_in(src, n, true,
+        mod(n->data);
+    )
+    /*
     for (
         n = list_get_first(src);
         !list_end(n);
@@ -172,20 +213,36 @@ void mod_list(List src, func_mod mod){
     ){
         mod(n->data);
     }
+    */
 }
-void clean_list(List l, func_filter filter){
+void refine_list(List l, func_filter refine){
     NoL n;
+    for_in(l, n, true,
+        if(!refine(n->data))
+            free_node(drop_node(n));
+    )
+    /*
     for (
         n = list_get_first(l);
         !list_end(n);
         n = list_get_next(n)
     ){
-        if(!filter(n->data))
+        if(!refine(n->data))
             free_node(drop_node(n));
     }
+    */
 }
 void print_list(List l){
     NoL n;
+    for_in(l, n, true,
+        if(n->data->info != l){
+            print_data(n->data);
+        }else{
+            printf("[...]");
+        }
+        printf(" ");
+    )
+    /*
     for (
         n = list_get_first(l);
         !list_end(n);
@@ -198,8 +255,20 @@ void print_list(List l){
         }
         printf(" ");
     }
+    */
     printf("\n");
 }
 unsigned int size_list(List list) {
     return list->size;
+}
+
+Hash hash_list(List l){
+    Hash resp = 523
+
+    for_in(l, rt, true,
+        resp ^= data_hash(rt->data);
+    )
+
+
+    return resp;
 }

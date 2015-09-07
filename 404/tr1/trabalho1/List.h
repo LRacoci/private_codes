@@ -18,10 +18,26 @@ typedef struct l{
     NoL head;
 } sList, *List;
 
+#define for_in(list, iterator, while_flag, \
+    code \
+) \
+{ \
+    NoL iterator; \
+    for ( \
+        iterator = list_get_first(list); \
+        !list_end(iterator) && (while_flag); \
+        iterator = list_get_next(iterator) \
+    ){ \
+        code \
+    } \
+}
+
 #define  append_list(list, data)   put_node_list(list,  1, data)
 #define prepend_list(list, data)   put_node_list(list, -1, data)
 #define     map_list(list, function)   mod_list(copy_list(list), function)
-#define  filter_list(list, function) clean_list(copy_list(list), function)
+#define  filter_list(list, function) refine_list(copy_list(list), function)
+
+
 
 
 NoL new_node(bool head, Data dat, NoL e, NoL d);
@@ -49,9 +65,15 @@ bool list_end(NoL n);
 
 List copy_list(List src);
 
+bool is_in_list(List l, Data d, func_comp infocmp);
+bool for_in_list(List l, func_filter);
+
 void mod_list(List l, func_mod mod);
-void clean_list(List l, func_filter filter);
+void refine_list(List l, func_filter filter);
 
 void print_list(List l);
 unsigned int size_list(List list);
+
+Hash hash_list(List l);
+
 #endif
