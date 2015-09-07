@@ -32,7 +32,7 @@ typedef struct l{
 }
 
 #define  append_list(list, data)   put_list(list, -1, data)
-#define prepend_list(list, data)   put_list(list,  1, data)
+#define prepend_list(list, data)   put_list(list,  0, data)
 #define     map_list(list, function)   mod_list(copy_list(list), function)
 #define  filter_list(list, function) refine_list(copy_list(list), function)
 

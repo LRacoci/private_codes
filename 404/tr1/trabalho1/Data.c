@@ -9,7 +9,8 @@ Data new_data(
     func_copy cpy,
     func_print p,
     func_hash h,
-    func_comp compare
+    func_comp compare,
+    DataType dT
 ){
     Data d = malloc(sizeof(sData));
     d->info = i;
@@ -19,6 +20,7 @@ Data new_data(
     d->print = p;
     d->hash = h;
     d->cmp = compare;
+    d->dType = dT;
 
     return d;
 }
@@ -53,16 +55,13 @@ Hash h(Data d){
 Info get_info_data(Data d){
     return d->info;
 }
+
 Comp comp_data(Data a, Data b){
     func_comp infocmp = a->cmp ? a->cmp : b->cmp ? b->cmp : NULL;
     if(infocmp){
         return infocmp(a->info, b->info);
     }else{
-        return memcmp(
-            (const Info) a->info,
-            (const Info) b->info,
-            min(a->size, b->size)
-        );
+        return comp_info(a->info, b->info, min(a->size, b->size);
     }
 
 }

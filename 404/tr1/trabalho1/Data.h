@@ -9,6 +9,24 @@ typedef Comp (*func_comp)(Info , Info );
 typedef void (*func_print)(Info );
 typedef Hash (*func_hash)(Info );
 
+typedef enum DataType{
+    ___List,
+    ___int,
+    ___String
+} DataType;
+
+/* Example with type = List and v = l:
+new_data(
+    ___List_copy(&(l)),
+    ___List_size(&(l)),
+    ___List_free,
+    ___List_copy,
+    ___List_print,
+    ___List_hash,
+    ___List_comp,
+    ___List
+)
+*/
 #define new(v, type) new_data( \
     ___ ## type ## _copy(&(v)), \
     ___ ## type ## _size(&(v)), \
@@ -16,18 +34,26 @@ typedef Hash (*func_hash)(Info );
     ___ ## type ## _copy, \
     ___ ## type ## _print, \
     ___ ## type ## _hash, \
-    ___ ## type ## _comp \
-);
+    ___ ## type ## _comp, \
+    ___ ## type \
+)
 
+#define comp_info(arg1 , arg2 , size) memcmp( \
+    (const Info) (arg1), \
+    (const Info) (arg2), \
+    (size) \
+)
 
 typedef struct sD{
     Info info;
     size_t size;
+    DataType dType;
     func_free del;
     func_copy copy;
     func_print print;
     func_hash hash;
     func_comp cmp;
+    DataType dType
 }sData, *Data;
 
 
@@ -37,7 +63,8 @@ Data new_data(
     func_copy cp,
     func_print p,
     func_hash h,
-    func_comp compare
+    func_comp compare,
+    DataType dT
 );
 Data copy_data(Data src);
 void free_data(Data d);

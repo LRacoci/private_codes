@@ -220,9 +220,11 @@ void refine_list(List l, func_filter refine){
 }
 void print_list(List l){
     NoL n;
+    Info cmp;
     printf("[");
     for_in(list, l, n, true,
-        if(n->data->info != l){
+        cmp = n->data->info;
+        if(cmp != l && *(List*)cmp != l){
             print_data(n->data);
         }else{
             printf("[...]");
@@ -235,7 +237,7 @@ void print_list(List l){
         !list_end(n);
         n = list_get_next(n)
     ){
-        if(n->data->info != l){
+        if(*(List*)(n->data->info) != l){
             print_data(n->data);
         }else{
             printf("[...]");
@@ -243,7 +245,7 @@ void print_list(List l){
         printf(" ");
     }
     */
-    printf("]");
+    printf("]\n");
 }
 unsigned int size_list(List list) {
     return list->size;
@@ -287,20 +289,23 @@ Comp comp_list(List a, List b){
 
 
 size_t ___List_size(Info i){
-    return size_list((List)i);
+    return size_list(*(List*)i);
 }
 void ___List_print(Info i){
-    print_list(i);
+    print_list(*(List*)i);
 }
 void ___List_free(Info i){
-    free_list(i);
+    free_list(*(List*)i);
+    free(i);
 }
 Info ___List_copy(Info i){
-    return copy_list(i);
+    Info resp = malloc(sizeof(List));
+    *(List*)resp = copy_list(*(List*)i);
+    return resp;
 }
 Hash ___List_hash(Info i){
-    return hash_list(i);
+    return hash_list(*(List*)i);
 }
 Comp ___List_comp(Info a, Info b){
-    return comp_list(a , b);
+    return comp_list(*(List*)a , *(List*)b);
 }
