@@ -114,17 +114,40 @@ Data get_list(List l, int index){
     return n->data;
 }
 
-void free_list(List l) {
+Data* get_vet(List l){
+    unsigned int i = 0;
+    NoL n;
+    Data* resp = malloc(l->size * sizeof(Data) );
+    for_in(list, l, n, true,
+        resp[i++] = n->data;
+    )
+    return resp;
+}
+void free_list_aux(List l, List top){
     NoL temp, n;
+    List cmp;
     for(
         temp = NULL, n = list_get_first(l);
         n != l->head || !list_end(n);
         temp = n, n = list_get_next(n)
     ){
-        if(temp) free_node(temp);
+        if(temp) {
+            if(temp->data->dType != ___List){
+                free_node(temp);
+            }else{
+                cmp = *(List*)temp->data->info;
+                if(cmp != top){
+                    free_list_aux(cmp, top);
+                }
+            }
+        }
     }
     free_node(l->head);
     free(l);
+
+}
+void free_list(List l) {
+    free_list_aux(l, l);
 }
 NoL list_get_first(List l){
     return l->head->dir;
@@ -218,19 +241,30 @@ void refine_list(List l, func_filter refine){
     }
     */
 }
-void print_list(List l){
+void print_list_aux(List l, List top){
     NoL n;
-    Info cmp;
+    List cmp;
     printf("[");
-    for_in(list, l, n, true,
-        cmp = n->data->info;
-        if(cmp != l && *(List*)cmp != l){
-            print_data(n->data);
-        }else{
-            printf("[...]");
-        }
-        printf(" ");
-    )
+    if(l){
+        for_in(list, l, n, true,
+            if(n->data->dType != ___List){
+                print_data(n->data);
+            }else {
+                cmp = *(List*)(n->data->info);
+                if(cmp != top){
+                    print_list_aux(cmp, top);
+                }else{
+                    printf("[...]");
+                }
+            }
+
+            printf(" ");
+        )
+    }
+    printf("]");
+}
+void print_list(List l){
+    print_list_aux(l, l);
     /*
     for (
         n = list_get_first(l);
@@ -245,9 +279,10 @@ void print_list(List l){
         printf(" ");
     }
     */
-    printf("]\n");
+    printf("\n");
 }
 unsigned int size_list(List list) {
+    if(!list) return 0;
     return list->size;
 }
 

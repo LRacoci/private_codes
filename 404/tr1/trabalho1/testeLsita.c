@@ -15,8 +15,8 @@ short int __int_comp(Info a, Info b){
 }
 
 int main(){
-    List l1, l2;
-    Data d[10], dl;
+    List l = NULL, l2 = NULL;
+    Data d[10], dl, dl2;
     int v[] = {9, 5, 2, 4, 7, 1, 3, 6, 10, 8};
     int i;
     l = new_list();
@@ -27,6 +27,14 @@ int main(){
 
         print_list(l);
     }
+    l2 = new_list();
+    for(i = 5; i < 10; i++){
+        d[i] = new(v[i], int);
+
+        put_list_sorted(l2, d[i], true);
+
+        print_list(l2);
+    }
     dl = new_data(
         &l,
         ___List_size(&(l)),
@@ -34,9 +42,22 @@ int main(){
         ___List_copy,
         ___List_print,
         ___List_hash,
-        ___List_comp
+        ___List_comp,
+        ___List
     );
-    prepend_list(l, dl);
+    dl2 =  new_data(
+        &l2,
+        ___List_size(&(l2)),
+        ___List_free,
+        ___List_copy,
+        ___List_print,
+        ___List_hash,
+        ___List_comp,
+        ___List
+    );
+
+    prepend_list(l, dl2);
+    append_list(l2, dl);
 
     print_list(l);
 

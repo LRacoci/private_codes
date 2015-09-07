@@ -24,6 +24,7 @@ Data new_data(
 
     return d;
 }
+
 Data copy_data(Data src){
     Data d;
     Info i;
@@ -44,7 +45,8 @@ Data copy_data(Data src){
         src->copy,
         src->print,
         src->hash,
-        src->cmp
+        src->cmp,
+        src->dType
     );
 
     return d;
@@ -61,7 +63,7 @@ Comp comp_data(Data a, Data b){
     if(infocmp){
         return infocmp(a->info, b->info);
     }else{
-        return comp_info(a->info, b->info, min(a->size, b->size);
+        return comp_info(a->info, b->info, min(a->size, b->size));
     }
 
 }

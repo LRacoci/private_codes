@@ -47,13 +47,12 @@ new_data(
 typedef struct sD{
     Info info;
     size_t size;
-    DataType dType;
     func_free del;
     func_copy copy;
     func_print print;
     func_hash hash;
     func_comp cmp;
-    DataType dType
+    DataType dType;
 }sData, *Data;
 
 
