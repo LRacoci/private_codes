@@ -8,7 +8,8 @@ Data new_data(
     func_free free_i,
     func_copy cpy,
     func_print p,
-    func_hash h
+    func_hash h,
+    func_comp compare
 ){
     Data d = malloc(sizeof(sData));
     d->info = i;
@@ -17,6 +18,7 @@ Data new_data(
     d->copy = cpy;
     d->print = p;
     d->hash = h;
+    d->cmp = compare;
 
     return d;
 }
@@ -33,7 +35,15 @@ Data copy_data(Data src){
         memcpy(i, src->info, src->size);
     }
 
-    d = new_data(i, src->size, src->del, src->copy, src->print, src->hash);
+    d = new_data(
+        i,
+        src->size,
+        src->del,
+        src->copy,
+        src->print,
+        src->hash,
+        src->cmp
+    );
 
     return d;
 }
@@ -43,8 +53,24 @@ Hash h(Data d){
 Info get_info_data(Data d){
     return d->info;
 }
-short int comp_data(Data a, Data b, func_comp infocmp){
-    return infocmp(a->info, b->info);
+Comp comp_data(Data a, Data b){
+    func_comp infocmp = a->cmp ? a->cmp : b->cmp ? b->cmp : NULL;
+    if(infocmp){
+        return infocmp(a->info, b->info);
+    }else{
+        return memcmp(
+            (const Info) a->info,
+            (const Info) b->info,
+            min(a->size, b->size)
+        );
+    }
+
+}
+bool eq_data(Data a, Data b){
+    if(h(a) != h(b)){
+        return false;
+    }
+    return comp_data(a, b) == 0;
 }
 void print_data(Data d){
     if(!d) return;
@@ -63,53 +89,54 @@ void free_data(Data d){
 }
 
 
-
-void __int_print(Info i){
-    printf("%8d", *(int*)(i));
+size_t ___int_size(Info i){
+    return sizeof(int);
 }
-void __int_free(Info i){
+void ___int_print(Info i){
+    printf("%2d", *(int*)(i));
+}
+void ___int_free(Info i){
     free(i);
 }
-Info __int_copy(Info i){
-    Info resp = malloc(sizeof(int));
+Info ___int_copy(Info i){
+    Info resp = malloc(___int_size(i));
     *(int*)resp = *(int*)i;
     return resp;
 }
-Hash __int_hash(Info i){
+Hash ___int_hash(Info i){
     return (Hash)*(int*)(i);
 }
+Comp ___int_comp(Info a, Info b){
+    return *(int*)a == *(int*)b ? 0: *(int*)a > *(int*)b ? 1 : -1;
+}
 
-
-void __String_print(Info i){
+size_t ___String_size(Info i){
+    return sizeof(char) * (strlen((String)i) + 1);
+}
+void ___String_print(Info i){
     printf("%s", *(String*)(i));
 }
-void __String_free(Info i){
+void ___String_free(Info i){
     free(i);
 }
-Info __String_copy(Info i){
+Info ___String_copy(Info i){
     Info resp = malloc((strlen((String)i) + 1)* sizeof(char));
     strcpy(*(String*)resp, *(String*)i);
     return resp;
 }
 /* djb2 by Dan Bernstein */
-Hash __String_hash(Info i){
+Hash ___String_hash(Info i){
     unsigned char* str = *(unsigned char* *) i;
     Hash h = 5381;
     int c;
-    while (c = *str++)
+    for(h = 5381 ; *str; str++){
+        c = *str;
         h = ((h << 5) + h) + c;
+
+    }
+
     return h;
 }
-
-void __List_print(Data d){
-    print_list(d->info);
-}
-void __List_free(Info i){
-    free_list(i);
-}
-Info __List_copy(Info i){
-    return copy_list(i);
-}
-Hash __List_hash(Info i){
-    return hash_list(i);
+Comp ___String_comp(Info a, Info b){
+    return strcmp((String) a, (String) b);
 }

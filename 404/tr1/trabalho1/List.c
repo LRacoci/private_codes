@@ -5,19 +5,6 @@
 #include "List.h"
 #include "Error.h"
 
-#ifndef min
-#define min(x, y) ((x < y) ? (x) : (y))
-#endif
-
-#ifndef sign
-#define sign(x) ((x >= 0) ? (1) : (-1))
-#endif
-
-#ifndef abs
-#define abs(x) ( sign(x) * x)
-#endif
-
-
 NoL new_node(bool head, Data dat, NoL e, NoL d){
     NoL r = malloc(sizeof(sNoL));
     r->head = head;
@@ -110,12 +97,12 @@ void put_list(List l, int index, Data d){
     put_node_list(l, index, new_node(false, d, NULL, NULL));
 }
 
-void put_list_sorted(List l, Data d, func_comp infocmp, bool inc){
+void put_list_sorted(List l, Data d, bool inc){
     NoL n;
     short int factor = inc ? -1 : 1;
     for(
         n = list_get_first(l);
-        !list_end(n) && ( (factor * comp_data(d, n->data, infocmp) ) < 0);
+        !list_end(n) && ( (factor * comp_data(d, n->data) ) < 0);
         n = list_get_next(n)
     );
     insert_node(-1, new_node(false, d, NULL, NULL), n);
@@ -163,11 +150,11 @@ List copy_list(List src){
     return resp;
 }
 
-bool is_in_list(List l, Data d, func_comp infocmp){
-    NoL n;
+bool is_in_list(List l, Data d){
     bool flag = false;
-    for_in(l, n, !flag,
-        flag |= (data_comp(n->data, d) == 0);
+    NoL n;
+    for_in(list, l, n, !flag,
+        flag |= (eq_data(n->data, d) == 0);
     )
     /*
     for (
@@ -183,9 +170,8 @@ bool is_in_list(List l, Data d, func_comp infocmp){
 
 bool for_in_list(List l, func_filter have_propertie){
     bool flag = false;
-
     NoL n;
-    for_in(l, n, !flag,
+    for_in(list, l, n, !flag,
         flag |= have_propertie(n->data);
     )
     /*
@@ -201,8 +187,8 @@ bool for_in_list(List l, func_filter have_propertie){
 }
 
 void mod_list(List src, func_mod mod){
-
-    for_in(src, n, true,
+    NoL n;
+    for_in(list, src, n, true,
         mod(n->data);
     )
     /*
@@ -217,7 +203,7 @@ void mod_list(List src, func_mod mod){
 }
 void refine_list(List l, func_filter refine){
     NoL n;
-    for_in(l, n, true,
+    for_in(list, l, n, true,
         if(!refine(n->data))
             free_node(drop_node(n));
     )
@@ -234,7 +220,8 @@ void refine_list(List l, func_filter refine){
 }
 void print_list(List l){
     NoL n;
-    for_in(l, n, true,
+    printf("[");
+    for_in(list, l, n, true,
         if(n->data->info != l){
             print_data(n->data);
         }else{
@@ -256,19 +243,64 @@ void print_list(List l){
         printf(" ");
     }
     */
-    printf("\n");
+    printf("]");
 }
 unsigned int size_list(List list) {
     return list->size;
 }
 
 Hash hash_list(List l){
-    Hash resp = 523
+    Hash resp = 523;
+    NoL n;
 
-    for_in(l, rt, true,
-        resp ^= data_hash(rt->data);
+    for_in(list, l, n, true,
+        resp ^= h(n->data);
     )
 
 
     return resp;
+}
+
+Comp comp_list(List a, List b){
+    NoL na, nb;
+    Comp partial, resp = 0;
+    bool equal = true;
+    if(a == b){
+        return 0;
+    }else if(a && !b){
+        return 1;
+    }else if(!a && b){
+        return -1;
+    }else{
+        for_in(list, a, na, true,
+            for_in(list, b, nb, true,
+                partial = comp_data(na->data, nb->data);
+                equal &= (partial == 0);
+                resp += partial;
+            )
+        )
+    }
+    return equal? 0 : resp != 0 ? resp : 1;
+}
+
+
+
+
+size_t ___List_size(Info i){
+    return size_list((List)i);
+}
+void ___List_print(Info i){
+    print_list(i);
+}
+void ___List_free(Info i){
+    free_list(i);
+}
+Info ___List_copy(Info i){
+    return copy_list(i);
+}
+Hash ___List_hash(Info i){
+    return hash_list(i);
+}
+Comp ___List_comp(Info a, Info b){
+    return comp_list(a , b);
 }

@@ -18,22 +18,21 @@ typedef struct l{
     NoL head;
 } sList, *List;
 
-#define for_in(list, iterator, while_flag, \
+#define for_in(type, list, iterator, while_flag, \
     code \
 ) \
 { \
-    NoL iterator; \
     for ( \
-        iterator = list_get_first(list); \
-        !list_end(iterator) && (while_flag); \
-        iterator = list_get_next(iterator) \
+        iterator = type ## _get_first(list); \
+        ! (type ## _end(iterator)) && (while_flag); \
+        iterator = type ## _get_next(iterator) \
     ){ \
         code \
     } \
 }
 
-#define  append_list(list, data)   put_node_list(list,  1, data)
-#define prepend_list(list, data)   put_node_list(list, -1, data)
+#define  append_list(list, data)   put_list(list, -1, data)
+#define prepend_list(list, data)   put_list(list,  1, data)
 #define     map_list(list, function)   mod_list(copy_list(list), function)
 #define  filter_list(list, function) refine_list(copy_list(list), function)
 
@@ -54,7 +53,7 @@ void put_node_list(List l, int index, NoL new);
 NoL get_node_list(List l, int index);
 
 void put_list(List l, int index, Data d);
-void put_list_sorted(List l, Data d, func_comp infocmp, bool inc);
+void put_list_sorted(List l, Data d, bool inc);
 Data get_list(List l, int index);
 
 void free_list(List l);
@@ -65,7 +64,7 @@ bool list_end(NoL n);
 
 List copy_list(List src);
 
-bool is_in_list(List l, Data d, func_comp infocmp);
+bool is_in_list(List l, Data d);
 bool for_in_list(List l, func_filter);
 
 void mod_list(List l, func_mod mod);
@@ -75,5 +74,15 @@ void print_list(List l);
 unsigned int size_list(List list);
 
 Hash hash_list(List l);
+
+
+
+
+size_t ___List_size(Info i);
+void ___List_print(Info i);
+void ___List_free(Info i);
+Info ___List_copy(Info i);
+Hash ___List_hash(Info i);
+Comp ___List_comp(Info a, Info b);
 
 #endif

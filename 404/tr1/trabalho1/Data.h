@@ -3,20 +3,20 @@
 #define DATA_DEFINED
 
 typedef void * Info;
-
 typedef void (*func_free)(Info );
 typedef Info (*func_copy)(Info );
-typedef short int (*func_comp)(Info , Info );
+typedef Comp (*func_comp)(Info , Info );
 typedef void (*func_print)(Info );
 typedef Hash (*func_hash)(Info );
 
 #define new(v, type) new_data( \
-    __ ## type ## _copy(&(v)), \
-    sizeof(type), \
-    __ ## type ## _free, \
-    __ ## type ## _copy, \
-    __ ## type ## _print, \
-    __ ## type ## _hash \
+    ___ ## type ## _copy(&(v)), \
+    ___ ## type ## _size(&(v)), \
+    ___ ## type ## _free, \
+    ___ ## type ## _copy, \
+    ___ ## type ## _print, \
+    ___ ## type ## _hash, \
+    ___ ## type ## _comp \
 );
 
 
@@ -27,6 +27,7 @@ typedef struct sD{
     func_copy copy;
     func_print print;
     func_hash hash;
+    func_comp cmp;
 }sData, *Data;
 
 
@@ -35,29 +36,30 @@ Data new_data(
     func_free free_i,
     func_copy cp,
     func_print p,
-    func_hash h
+    func_hash h,
+    func_comp compare
 );
 Data copy_data(Data src);
 void free_data(Data d);
 Info get_info_data(Data d);
 Hash h(Data d);
-short int comp_data(Data a, Data b, func_comp infocmp);
+Comp comp_data(Data a, Data b);
+bool eq_data(Data a, Data b);
 void print_data(Data d);
 
-void __int_print(Info i);
-void __int_free(Info i);
-Info __int_copy(Info i);
-Hash __int_hash(Info i);
+size_t ___int_size(Info i);
+void ___int_print(Info i);
+void ___int_free(Info i);
+Info ___int_copy(Info i);
+Hash ___int_hash(Info i);
+Comp ___int_comp(Info a, Info b);
 
-void __String_print(Info i);
-void __String_free(Info i);
-Info __String_copy(Info i);
-Hash __String_hash(Info i);
-
-void __List_print(Data d);
-void __List_free(Info i);
-Info __List_copy(Info i);
-Hash __List_hash(Info i);
+size_t ___String_size(Info i);
+void ___String_print(Info i);
+void ___String_free(Info i);
+Info ___String_copy(Info i);
+Hash ___String_hash(Info i);
+Comp ___String_comp(Info a, Info b);
 
 
 

@@ -23,10 +23,12 @@ int main(){
     for(i = 0; i < 10; i++){
         d[i] = new(v[i], int);
 
-        put_list_sorted(l, d[i], __int_comp, true);
+        put_list_sorted(l, d[i], true);
 
         print_list(l);
     }
+
+    prepend_list(l, new(l, List));
 
     print_list(l);
 

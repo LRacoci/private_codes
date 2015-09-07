@@ -99,3 +99,23 @@ void list_tail(list *list, void *element) {
 int list_size(list *list) {
     return list->logicalLength;
 }
+
+
+
+
+
+size_t __List_size(Info i){
+    return size_list((List)i);
+}
+void __List_print(Data d){
+    print_list(d->info);
+}
+void __List_free(Info i){
+    free_list(i);
+}
+Info __List_copy(Info i){
+    return copy_list(i);
+}
+Hash __List_hash(Info i){
+    return hash_list(i);
+}
