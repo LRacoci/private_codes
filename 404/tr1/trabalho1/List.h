@@ -18,15 +18,18 @@ typedef struct l{
     NoL head;
 } sList, *List;
 
-#define for_in(type, list, iterator, while_flag, \
+#define for_in(type, list, iterator, aux, while_flag, \
     code \
 ) \
 { \
     for ( \
-        iterator = type ## _get_first(list); \
+        (aux) = NULL, iterator = type ## _get_first(list); \
         ! (type ## _end(iterator)) && (while_flag); \
-        iterator = type ## _get_next(iterator) \
+        (aux) = (iterator), iterator = type ## _get_next(iterator)\
     ){ \
+        if((aux) && !((aux)->data)){ \
+            remove_node(aux); \
+        } \
         code \
     } \
 }
@@ -40,7 +43,7 @@ typedef struct l{
 
 
 NoL new_node(bool head, Data dat, NoL e, NoL d);
-void free_node(NoL del);
+void free_node(NoL* del);
 NoL get_relative_node(int relative_index, NoL axis);
 void insert_node(int relative_index, NoL new, NoL node);
 
@@ -56,7 +59,7 @@ void put_list(List l, int index, Data d);
 void put_list_sorted(List l, Data d, bool inc);
 Data get_list(List l, int index);
 
-void free_list(List l);
+void free_list(List * l);
 
 NoL list_get_first(List l);
 NoL list_get_next(NoL n);
@@ -80,7 +83,7 @@ Hash hash_list(List l);
 
 size_t ___List_size(Info i);
 void ___List_print(Info i);
-void ___List_free(Info i);
+void ___List_free(Info * i);
 Info ___List_copy(Info i);
 Hash ___List_hash(Info i);
 Comp ___List_comp(Info a, Info b);

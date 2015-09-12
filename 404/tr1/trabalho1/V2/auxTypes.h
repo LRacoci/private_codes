@@ -5,9 +5,7 @@ typedef char* String;
 
 #ifndef BOOL_DEFINED
 #define BOOL_DEFINED
-typedef char bool;
-#define true 1
-#define false 0
+typedef enum bool {false = 0, true = 1} bool;
 #endif
 
 #ifndef HASH_TYPE

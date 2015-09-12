@@ -36,7 +36,7 @@ void set_line_exception(Exception e, unsigned short int _line){
 	e->line = _line;
 	e->complete = true;
 }
-void stderror(Exception exc){
+void throw(Exception exc){
 	if(exc == NULL || ! exc->complete){
 		return;
 	}

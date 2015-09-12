@@ -5,22 +5,13 @@
 #include "iasDefs.h"
 #include "genericDefs.h"
 #include "Error.h"
+#include "Data.h"
+#include "Builder.h"
+#include "Word.h"
 
 
-static char mne[][17] = { "LD",
-    "LD-", "LD|", "LDmq", "LDmq_mx",
-    "ST", "JMP", "JUMP+", "ADD",
-    "ADD|", "SUB", "SUB|", "MUL",
-    "DIF", "LSH", "RSH", "STaddr"};
 
-Hash h(String s){
-    Hash h = 5381;
 
-    for(;*s;s++){
-        h = ((h << 5) + h) + *s;
-    }
-    return h;
-}
 
 bool char_in_string(char target, String s){
     if(s == NULL){
@@ -36,37 +27,222 @@ bool char_in_string(char target, String s){
     }
     return false;
 }
-
-unsigned int fgetword(FILE * src, String word){
-    unsigned int resp = 0;
-    int c;
-    for(;c != EOF &&  char_in_string(c, " \t\n"); c = fgetc(src)){
-        if(c == '\n'){
-            resp++;
+bool element_of(
+    String e,
+    char vet[][MAX_INSTR],
+    func_comp cmp,
+    unsigned int size
+){
+    unsigned int i;
+    if(vet == NULL || size == 0){
+        return false;
+    }if(e == NULL){
+        return true;
+    }
+    for(i = 0; i < size; i++){
+        if(cmp(e, vet[size]) == 0){
+            return true;
         }
     }
-    for(;c != EOF && !char_in_string(c, " \t\n"); c = fgetc(src)){
-        *word = c;
-        word++;
-    }
-    if(c == '\n'){
-        resp++;
-    }
-    return c == EOF ? -1 : resp;
-
+    return false;
 }
 
+unsigned int fgetword(FILE * src, String * str){
+    unsigned int resp = 0;
+    int c = !EOF;
+    *str = malloc(128*sizeof(char));
+    bool comentario = false;
+    for(c = fgetc(src); c != EOF; c = fgetc(src)){
+        if(!char_in_string(c, " #\t\n") && !comentario){
+            ungetc(c, src);
+            fscanf(src, "%s", *str );
+            return resp;
+        }else if(c == '\n'){
+            resp++;
+            comentario = false;
+        }else if(c == '#'){
+            comentario = true;
+        }
+    }
+    return c == EOF ? -1 : resp;
+}
+
+String get_part_string(String src, int ini, int fim){
+    unsigned int size = strlen(src);
+    String resp = malloc(size*sizeof(char));
+    resp = &(resp[ini % size]);
+    resp[fim % size] = '\0';
+    return resp;
+}
+
+
 void build(FILE * src, FILE * out) {
-    unsigned int line, aux;
-    char word[66];
+    unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
+    unsigned short int narg;
+    long int arg[2];
+    bool error;
+    TypeExpr estate = NAOSEI;
+    TypeDir type_dir = NONE;
+    String str[3] = {NULL};
 	for (
-			rewind(src), line = 0;
+			rewind(src),
+            in_line = 1,
+            out_line = 0,
+            aux = fgetword(src, &str[2]),
+            in_line += aux;
+
             aux != -1;
-			aux = fgetword(src, word), line += aux
+
+            aux = fgetword(src, &str[2]),
+            in_line += aux
 		)
 	{
+        w = aux > 0 ? 0 : w + 1;
 
+        printf("Line in %2d, Line out %X %c, Word %d: %s ",
+                in_line, out_line/2, out_line % 2 ? 'D' : 'E', w, str[2]);
+        printf("# ");
+        if(str[2][0] == '.' ){
+            printf("Diretiva");
+            estate = DIRETIVA;
+            narg = 0;
+            sscanf(str[2], ".%s", str[2]);
+            for(i = 0; i < MAX_DIR && strcmp(str[2], dir[i].id); i++);
+            type_dir = i;
+
+            switch(type_dir){
+                case NONE:
+
+                    break;
+                case set:
+                    printf("Argument of set");
+                    break;
+                case org:
+                    out_line = arg[narg]*2;
+                    break;
+                case align:
+                    out_line /= 2;
+                    out_line *= 2;
+                    break;
+                case wfill:
+                    switch (narg) {
+                        case 0:
+                        break;
+                        case 1:
+                        out_line += arg[narg]*2;
+                        break;
+                    }
+                    break;
+                case word:
+                    out_line += 2;
+                    break;
+            }
+
+        }else
+        if(str[2][0] == '"' && str[2][strlen(str[2]) -1] == '"'){
+            if(estate == INSTRUCAO){
+                printf("Argument of a instruction");
+            }else{
+                printf("Error, Not a argument of a instruction");
+            }
+
+            narg = 0;
+            sscanf(str[2], "\".%s\"", str[2]);
+            if(str[2][0] == '0' && str[2][1] == 'x'){
+                error = false;
+                for(i = 0; str[2][i] && !error; i++){
+                    if(!hexadecimal(str[2][i])){
+                        error = true;
+                        printf("%c is not a valid hexadecimal character\n", str[2][i]);
+                    }
+                }if(!error){
+                    printf("Hexadecimal Number");
+                }
+                sscanf(str[2], "%x", &aux);
+                arg[narg] = aux;
+            }else if(between('0', str[2][0], '9')){
+                error = false;
+                for(i = 0; str[2][i] && !error; i++){
+                    if(!decimal(str[2][i])){
+                        printf("%c is not a valid decimal character",  str[2][i]);
+                        error = true;
+                    }
+                }if(!error){
+                    printf("Decimal Number");
+                }
+                sscanf(str[2], "%ld", &arg[narg]);
+            }
+
+        }else
+        if(str[2][strlen(str[2]) - 1] == ':'){
+            error = false;
+            if(decimal(str[2][0])){
+                printf("Erro, rotulo nao deve começar com número");
+            }
+            for(i = 0; str[2][i] == ':' && !error; i++){
+                error |= !(alphanumeric(str[2][i]) || str[2][i] == '_');
+            }
+            if(!error){
+                printf("Rotulo");
+                estate = ROTULO;
+            }else{
+                printf("Erro, rotulo nao alphanumerico ou  '_'");
+            }
+        }else
+        if(str[2][0] == '0' && str[2][1] == 'x'){
+            error = false;
+            for(i = 0; str[2][i] && !error; i++){
+                if(!hexadecimal(str[2][i])){
+                    error = true;
+                    printf("%c is not a valid hexadecimal character\n", str[2][i]);
+                }
+            }if(!error){
+                printf("Hexadecimal Number");
+            }
+            sscanf(str[2], "%x", &aux_read);
+            if(narg < 2){
+                arg[narg] = aux_read;
+            }else{
+                printf("Error, more then two arguments");
+            }
+
+            narg++;
+        }else
+        if(between('0', str[2][0], '9')){
+            error = false;
+            for(i = 0; str[2][i] && !error; i++){
+                if(!decimal(str[2][i])){
+                    printf("%c is not a valid decimal character",  str[2][i]);
+                    error = true;
+                }
+            }if(!error){
+                printf("Decimal Number");
+            }
+            sscanf(str[2], "%u", &aux_read);
+            if(narg < 2){
+                arg[narg] = aux_read;
+            }else{
+                printf("Error, more then two arguments");
+            }
+        }else{
+            for(i = 0; i < MAX_INSTR && strcmp(str[2], mne[i].id); i++);
+            if(i != MAX_INSTR){
+                printf("Instrucao: %s", mne[i].id);
+                estate = INSTRUCAO;
+                out_line += 1;
+            }else{
+                printf("Erro, provavelmente um rotulo ou um simbolo");
+            }
+        }
+        printf("\n");
+        free(str[0]);
+        for(i = 0; i < 1; i++){
+            str[i] = str[i+1];
+        }
 	}
+    for(i = 0; i < 3; i++){
+        free(str[i]);
+    }
 }
 int main(int argc, char *argv[]) {
 	FILE *src = NULL, *out = NULL;
@@ -74,7 +250,7 @@ int main(int argc, char *argv[]) {
 	switch (argc){
 		case 2:
 			src = fopen(argv[1], "r");
-			out_name = strcat(argv[1], ".hex");
+			out_name = strcat(argv[1], ".aux");
 			out = fopen(out_name, "w");
 			break;
 		case 3:
@@ -84,7 +260,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if( src == NULL ){
-		stderror(
+		throw(
 			new_error_exception(
 				"Error while opening the source file.\n", -1
 			)
@@ -93,7 +269,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if( out == NULL ){
-		stderror(
+		throw(
 			new_error_exception(
 				"Error while opening the output file.\n", -1
 			)

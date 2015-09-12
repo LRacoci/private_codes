@@ -16,10 +16,11 @@ NoL new_node(bool head, Data dat, NoL e, NoL d){
     }
     return r;
 }
-void free_node(NoL del){
-    if(del->data)
-        free_data(del->data);
-    free(del);
+void free_node(NoL *del){
+    if((*del)->data)
+        free_data(&(*del)->data);
+    free(*del);
+    *del = NULL;
 }
 NoL get_relative_node(int relative_index, NoL axis){
     int i;
@@ -47,12 +48,23 @@ void insert_node(int relative_index, NoL new, NoL node){
 
 }
 NoL drop_node(NoL r){
+    if(!r){
+        return NULL;
+    }
     if(r->dir)
         r->dir->esq = r->esq;
     if(r->esq)
         r->esq->dir = r->dir;
     r->esq = r->dir = r;
     return r;
+}
+bool remove_node(NoL n){
+    NoL del = drop_node(n);
+    if(!del){
+        return false;
+    }
+    free_node(&del);
+    return true;
 }
 
 NoL drop_list(List l, int index){
@@ -116,38 +128,39 @@ Data get_list(List l, int index){
 
 Data* get_vet(List l){
     unsigned int i = 0;
-    NoL n;
+    NoL n, aux;
     Data* resp = malloc(l->size * sizeof(Data) );
-    for_in(list, l, n, true,
+    for_in(list, l, n, aux, true,
         resp[i++] = n->data;
     )
     return resp;
 }
-void free_list_aux(List l, List top){
+void free_list_aux(List * l, List top){
     NoL temp, n;
-    List cmp;
     for(
-        temp = NULL, n = list_get_first(l);
-        n != l->head || !list_end(n);
+        temp = NULL, n = list_get_first((*l));
+        !list_end(temp);
         temp = n, n = list_get_next(n)
     ){
         if(temp) {
             if(temp->data->dType != ___List){
-                free_node(temp);
+                free_node(&temp);
             }else{
-                cmp = *(List*)temp->data->info;
-                if(cmp != top){
-                    free_list_aux(cmp, top);
+                if(*(List*)temp->data->info != top){
+                    free_list_aux(&(*(List*)temp->data->info), top);
+                }else{
+                    *(List*)temp->data->info = NULL;
                 }
             }
         }
     }
-    free_node(l->head);
-    free(l);
+    free_node(&((*l)->head));
+    free((*l));
+    *l = NULL;
 
 }
-void free_list(List l) {
-    free_list_aux(l, l);
+void free_list(List* l) {
+    free_list_aux(l, *l);
 }
 NoL list_get_first(List l){
     return l->head->dir;
@@ -175,8 +188,8 @@ List copy_list(List src){
 
 bool is_in_list(List l, Data d){
     bool flag = false;
-    NoL n;
-    for_in(list, l, n, !flag,
+    NoL n, aux;
+    for_in(list, l, n, aux, !flag,
         flag |= (eq_data(n->data, d) == 0);
     )
     /*
@@ -193,8 +206,8 @@ bool is_in_list(List l, Data d){
 
 bool for_in_list(List l, func_filter have_propertie){
     bool flag = false;
-    NoL n;
-    for_in(list, l, n, !flag,
+    NoL n, aux;
+    for_in(list, l, n, aux, !flag,
         flag |= have_propertie(n->data);
     )
     /*
@@ -210,8 +223,8 @@ bool for_in_list(List l, func_filter have_propertie){
 }
 
 void mod_list(List src, func_mod mod){
-    NoL n;
-    for_in(list, src, n, true,
+    NoL n, aux;
+    for_in(list, src, n, aux, true,
         mod(n->data);
     )
     /*
@@ -225,10 +238,10 @@ void mod_list(List src, func_mod mod){
     */
 }
 void refine_list(List l, func_filter refine){
-    NoL n;
-    for_in(list, l, n, true,
+    NoL n, aux;
+    for_in(list, l, n, aux, true,
         if(!refine(n->data))
-            free_node(drop_node(n));
+            remove_node(n);
     )
     /*
     for (
@@ -242,11 +255,11 @@ void refine_list(List l, func_filter refine){
     */
 }
 void print_list_aux(List l, List top){
-    NoL n;
+    NoL n, aux;
     List cmp;
     printf("[");
     if(l){
-        for_in(list, l, n, true,
+        for_in(list, l, n, aux, true,
             if(n->data->dType != ___List){
                 print_data(n->data);
             }else {
@@ -288,9 +301,9 @@ unsigned int size_list(List list) {
 
 Hash hash_list(List l){
     Hash resp = 523;
-    NoL n;
+    NoL n, aux;
 
-    for_in(list, l, n, true,
+    for_in(list, l, n, aux, true,
         resp ^= h(n->data);
     )
 
@@ -299,7 +312,7 @@ Hash hash_list(List l){
 }
 
 Comp comp_list(List a, List b){
-    NoL na, nb;
+    NoL na, nb, auxa, auxb;
     Comp partial, resp = 0;
     bool equal = true;
     if(a == b){
@@ -309,8 +322,8 @@ Comp comp_list(List a, List b){
     }else if(!a && b){
         return -1;
     }else{
-        for_in(list, a, na, true,
-            for_in(list, b, nb, true,
+        for_in(list, a, na, auxa, true,
+            for_in(list, b, nb, auxb, true,
                 partial = comp_data(na->data, nb->data);
                 equal &= (partial == 0);
                 resp += partial;
@@ -329,9 +342,10 @@ size_t ___List_size(Info i){
 void ___List_print(Info i){
     print_list(*(List*)i);
 }
-void ___List_free(Info i){
-    free_list(*(List*)i);
-    free(i);
+void ___List_free(Info *i){
+    free_list(&(*(List*)i));
+    free(*i);
+    *i = NULL;
 }
 Info ___List_copy(Info i){
     Info resp = malloc(sizeof(List));

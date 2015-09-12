@@ -2,8 +2,8 @@
 #ifndef DATA_DEFINED
 #define DATA_DEFINED
 
-typedef void * Info;
-typedef void (*func_free)(Info );
+typedef void * Info, **pInfo;
+typedef void (*func_free)(pInfo );
 typedef Info (*func_copy)(Info );
 typedef Comp (*func_comp)(Info , Info );
 typedef void (*func_print)(Info );
@@ -53,7 +53,7 @@ typedef struct sD{
     func_hash hash;
     func_comp cmp;
     DataType dType;
-}sData, *Data;
+}sData, *Data, **pData;
 
 
 Data new_data(
@@ -66,7 +66,7 @@ Data new_data(
     DataType dT
 );
 Data copy_data(Data src);
-void free_data(Data d);
+void free_data(Data* d);
 Info get_info_data(Data d);
 Hash h(Data d);
 Comp comp_data(Data a, Data b);
@@ -75,14 +75,14 @@ void print_data(Data d);
 
 size_t ___int_size(Info i);
 void ___int_print(Info i);
-void ___int_free(Info i);
+void ___int_free(pInfo i);
 Info ___int_copy(Info i);
 Hash ___int_hash(Info i);
 Comp ___int_comp(Info a, Info b);
 
 size_t ___String_size(Info i);
 void ___String_print(Info i);
-void ___String_free(Info i);
+void ___String_free(pInfo i);
 Info ___String_copy(Info i);
 Hash ___String_hash(Info i);
 Comp ___String_comp(Info a, Info b);

@@ -61,7 +61,10 @@ int main(){
 
     print_list(l);
 
-    free_list(l);
+    free_list(&l);
+    print_list(l);
+    print_list(l2);
+    free_list(&l2);
 
     return 0;
 }

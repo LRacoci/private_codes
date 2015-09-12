@@ -7,9 +7,16 @@
 #define EXIT_FAIL -1
 #define str(s) #s
 
+#define stderror(msg, line){ \
+    throw( \
+        new_error_exception( \
+            (msg), (line) \
+        )\
+    ); \
+}
 #define make_sure(x, y) {\
-    if(!x){ \
-        stderror(new_error_exception(y , -1)); \
+    if(!(x)){ \
+        stderror(y , -1); \
         exit(EXIT_FAIL); \
     } \
 }
@@ -34,6 +41,6 @@ Exception new_warning_exception(String _msg, unsigned short int _line);
 Exception start_warning_exception(String _msg);
 
 void set_line_exception(Exception e, unsigned short int line);
-void stderror(Exception e);
+void throw(Exception e);
 
 #endif

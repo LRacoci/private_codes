@@ -77,16 +77,17 @@ void print_data(Data d){
     if(!d) return;
     d->print(d->info);
 }
-void free_data(Data d){
-    if(!d)
+void free_data(Data* d){
+    if(!(*d))
         return;
 
-    if(d->del){
-        d->del(d->info);
+    if((*d)->del){
+        (*d)->del(&((*d)->info));
     }else{
-        free(d->info);
+        free((*d)->info);
     }
-    free(d);
+    free((*d));
+    *d = NULL;
 }
 
 
@@ -96,8 +97,9 @@ size_t ___int_size(Info i){
 void ___int_print(Info i){
     printf("%2d", *(int*)(i));
 }
-void ___int_free(Info i){
-    free(i);
+void ___int_free(pInfo i){
+    free(*i);
+    *i = NULL;
 }
 Info ___int_copy(Info i){
     Info resp = malloc(___int_size(i));
@@ -117,8 +119,9 @@ size_t ___String_size(Info i){
 void ___String_print(Info i){
     printf("%s", *(String*)(i));
 }
-void ___String_free(Info i){
-    free(i);
+void ___String_free(pInfo i){
+    free(*i);
+    *i = NULL;
 }
 Info ___String_copy(Info i){
     Info resp = malloc((strlen((String)i) + 1)* sizeof(char));
