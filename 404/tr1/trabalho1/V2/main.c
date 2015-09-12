@@ -6,9 +6,10 @@
 #include "genericDefs.h"
 #include "Error.h"
 #include "Data.h"
+/*
 #include "Builder.h"
 #include "Word.h"
-
+*/
 
 
 
@@ -50,8 +51,8 @@ bool element_of(
 unsigned int fgetword(FILE * src, String * str){
     unsigned int resp = 0;
     int c = !EOF;
-    *str = malloc(128*sizeof(char));
     bool comentario = false;
+    *str = malloc(128*sizeof(char));
     for(c = fgetc(src); c != EOF; c = fgetc(src)){
         if(!char_in_string(c, " #\t\n") && !comentario){
             ungetc(c, src);
