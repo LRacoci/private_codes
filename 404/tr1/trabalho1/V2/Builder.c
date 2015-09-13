@@ -1,16 +1,14 @@
-#include <stdio.h>
-#include <string.h>
-/*
-#include <stdlib.h>
-#include "auxTypes.h"
-#include "iasDefs.h"
-#include "genericDefs.h"
-#include "Error.h"
-#include "Data.h"
-*/
 #include "Builder.h"
 
-void build(FILE * src, FILE * out) {
+void print_map_line(FILE * out, unsigned int out_line, long int arg) {
+
+}
+void dir_set(String name, String arg1, long int arg, HashT dict){
+    char[MAX_ARG] arg
+    put_copy_HashT(dict, )
+}
+
+void first_pass(FILE * src, FILE * out, HashT dict){
     unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
     unsigned short int narg;
     long int arg[2];
@@ -32,6 +30,48 @@ void build(FILE * src, FILE * out) {
 		)
 	{
         w = aux > 0 ? 0 : w + 1;
+        if (
+            estate == DIRETIVA &&
+            type_dir != NONE &&
+            narg+1 == dir[type_dir].n_args
+        ){
+            switch(type_dir){
+                case set:
+                    dir_set(str[0], str[1], arg[1], dict);
+                    break;
+                case org:
+                    out_line = arg[narg]*2;
+                    break;
+                case align:
+                    if(out_line%2 == 1){
+                        fprintf(out, "00 000\n");
+                    }else{
+                        out_line++;
+                    }
+                    break;
+                case wfill:
+                    if(out_line == 1){
+                        stderror(in_line, "Trying to wfill from the right");
+                    }
+                    if(narg == 0){
+                        stderror(in_line, "Missing arguments for wfill");
+                    }if(out_line/2 + arg[0] >= IAS_MAX_LINE_NUMBER){
+                        stderror(in_line, "Wfill overflows the available memory");
+                    }
+                    for(i = 0; i < arg[0]; i++){
+                        print_map_line(out, out_line/2, arg[0]);
+                    }
+                    out_line += arg[0]*2;
+                    break;
+                case word:
+                    if(out_line == 1){
+                        stderror(in_line, "Trying to put a word in the right");
+                    }
+                    print_map_line(out, out_line/2, arg[0]);
+                    out_line += 2;
+                    break;
+            }
+        }
 
         printf("Line in %2d, Line out %X %c, Word %d: %s ",
                 in_line, out_line/2, out_line % 2 ? 'D' : 'E', w, str[2]);
@@ -43,35 +83,6 @@ void build(FILE * src, FILE * out) {
             sscanf(str[2], ".%s", str[2]);
             for(i = 0; i < MAX_DIR && strcmp(str[2], dir[i].id); i++);
             type_dir = i;
-
-            switch(type_dir){
-                case NONE:
-
-                    break;
-                case set:
-                    printf("Argument of set");
-                    break;
-                case org:
-                    out_line = arg[narg]*2;
-                    break;
-                case align:
-                    out_line /= 2;
-                    out_line *= 2;
-                    break;
-                case wfill:
-                    switch (narg) {
-                        case 0:
-                        break;
-                        case 1:
-                        out_line += arg[narg]*2;
-                        break;
-                    }
-                    break;
-                case word:
-                    out_line += 2;
-                    break;
-            }
-
         }else
         if(str[2][0] == '"' && str[2][strlen(str[2]) -1] == '"'){
             if(estate == INSTRUCAO){
@@ -165,8 +176,10 @@ void build(FILE * src, FILE * out) {
                 printf(" Instrucao: %s", mne[i].id);
                 estate = INSTRUCAO;
                 out_line += 1;
+            }else if(s_in_HashT(dict, str[2])){
+                printf(" Rot or Sym");
             }else{
-                printf(" Erro, provavelmente um rotulo ou um simbolo");
+                printf(" Word not identified");
             }
         }
         printf("\n");
@@ -179,45 +192,11 @@ void build(FILE * src, FILE * out) {
         free(str[i]);
     }
 }
-int main(int argc, char *argv[]) {
-	FILE *src = NULL, *out = NULL;
-	String out_name;
-	switch (argc){
-		case 2:
-			src = fopen(argv[1], "r");
-			out_name = strcat(argv[1], ".aux");
-			out = fopen(out_name, "w");
-			break;
-		case 3:
-			src = fopen(argv[1], "r");
-			out = fopen(argv[2], "w");
-			break;
-	}
 
-	if( src == NULL ){
-		throw(
-			new_error_exception(
-				"Error while opening the source file.\n", -1
-			)
-		);
-		exit(EXIT_FAIL);
-	}
-
-	if( out == NULL ){
-		throw(
-			new_error_exception(
-				"Error while opening the output file.\n", -1
-			)
-		);
-		exit(EXIT_FAIL);
-	}
-
-    build(src, out);
-
-    if(src)
-        fclose(src);
-    if(out)
-        fclose(out);
-
-    return EXIT_SUCESS;
+void build(FILE * src, FILE * out) {
+    HashT dict = new_HashT();
+    first_pass(src, out, dict);
+    print_HashT(dict);
+    second_pass(src, out, dict);
+    free_HashT(dict);
 }

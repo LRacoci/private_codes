@@ -6,18 +6,27 @@
 
 #define EXIT_FAIL -1
 #define str(s) #s
-
+/*
 #define stderror(msg, line){ \
     throw( \
         new_error_exception( \
             (msg), (line) \
         )\
+        exit(EXIT_FAIL); \
     ); \
 }
-#define make_sure(x, y) {\
+*/
+#define stderror(line, msg){ \
+    if((line) < IAS_MAX_LINE_NUMBER){ \
+		fprintf(stderr, "ERROR on line %d\n", (line)); \
+	} \
+		fprintf(stderr, msg); \
+		exit(EXIT_FAIL); \
+}
+
+#define make_sure(condition, mesg, line) {\
     if(!(x)){ \
-        stderror(y , -1); \
-        exit(EXIT_FAIL); \
+        stderror(y , line); \
     } \
 }
 
