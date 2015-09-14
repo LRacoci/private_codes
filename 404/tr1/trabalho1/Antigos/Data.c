@@ -77,30 +77,48 @@ void print_data(Data d){
     if(!d) return;
     d->print(d->info);
 }
-void free_data(Data * d){
-    if(!(*d))
+void free_data(Data d){
+    if(!d)
         return;
 
-    if((*d)->del){
-        (*d)->del((*d)->info);
+    if(d->del){
+        d->del(d->info);
     }else{
-        free((*d)->info);
+        free(d->info);
     }
-    free((*d));
-    *d = NULL;
+    free(d);
 }
 
-/* String Basics Definition */
-/***************************/
+
+size_t ___int_size(Info i){
+    return sizeof(int);
+}
+void ___int_print(Info i){
+    printf("%2d", *(int*)(i));
+}
+void ___int_free(Info i){
+    free(i);
+}
+Info ___int_copy(Info i){
+    Info resp = malloc(___int_size(i));
+    *(int*)resp = *(int*)i;
+    return resp;
+}
+Hash ___int_hash(Info i){
+    return (Hash)*(int*)(i);
+}
+Comp ___int_comp(Info a, Info b){
+    return *(int*)a == *(int*)b ? 0: *(int*)a > *(int*)b ? 1 : -1;
+}
+
 size_t ___String_size(Info i){
     return sizeof(char) * (strlen((String)i) + 1);
 }
 void ___String_print(Info i){
     printf("%s", *(String*)(i));
 }
-void ___String_free(Info *i){
-    free(*i);
-    *i = NULL;
+void ___String_free(Info i){
+    free(i);
 }
 Info ___String_copy(Info i){
     Info resp = malloc((strlen((String)i) + 1)* sizeof(char));
@@ -123,6 +141,3 @@ Hash ___String_hash(Info i){
 Comp ___String_comp(Info a, Info b){
     return strcmp((String) a, (String) b);
 }
-
-BodyDefinition(int, "%2d")
-BodyDefinition(LongInt, "%2ld")

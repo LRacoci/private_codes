@@ -10,7 +10,7 @@
 #include "HashTable.h"
 #include "iasDefs.c"
 
-void first_pass(FILE * src, FILE * out, HashT *dict);
-void second_pass(FILE * src, FILE * out, HashT *dict);
+void first_pass(FILE * src, FILE * out, HashT dict);
+void second_pass(FILE * src, FILE * out, HashT dict);
 
 void build(FILE * src, FILE * out);

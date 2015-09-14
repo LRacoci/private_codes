@@ -3,6 +3,11 @@
 typedef char* String;
 #endif
 
+#ifndef LONG_INT_DEFINED
+#define LONG_INT_DEFINED
+typedef long int LongInt;
+#endif
+
 #ifndef BOOL_DEFINED
 #define BOOL_DEFINED
 typedef enum bool {false = 0, true = 1} bool;

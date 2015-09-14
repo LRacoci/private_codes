@@ -1,17 +1,77 @@
 #include "Builder.h"
 
+
+static struct m{
+    char id[10];
+    unsigned short int opcode;
+    __extension__ bool arg:1;
+    __extension__ bool option:1;
+} mne[MAX_INSTR] = {
+    {     "LD" , true  , false },
+    {     "LD-", true  , false },
+    {     "LD|", true  , false },
+    {    "LDmq", false , false },
+    { "LDmq_mx", true  , false },
+    {      "ST", true  , false },
+    {     "JMP", true  , true  },
+    {   "JUMP+", true  , true  },
+    {     "ADD", true  , false },
+    {    "ADD|", true  , false },
+    {     "SUB", true  , false },
+    {    "SUB|", true  , false },
+    {     "MUL", true  , false },
+    {     "DIF", true  , false },
+    {     "LSH", false , false },
+    {     "RSH", false , false },
+    {  "STaddr", true  , true  }
+};
+
+
+static struct Dir{
+    TypeDir dirType;
+    char id[10];
+    unsigned int n_args;
+    struct Arg{
+        TypeArg name[4];
+        long int lowest;
+        long int highest;
+    }arg[2];
+} dir[MAX_DIR] = {
+    {   set ,  "set", 2, {
+        {{SYM}                                         },
+        {{HEX, DEC}         , 0           , 0x7FFFFFFF }
+    }},
+    {   org ,  "org", 1, {
+        {{HEX, DEC}          , 0           , 0x3FF     }
+    }},
+    { align ,"align", 1, {
+        {{DEC}              , 0           , 0x3FF      }
+    }},
+    { wfill ,"wfill", 2, {
+        {{     DEC          }, 1          , 0x3FF      },
+        {{HEX, DEC, ROT, SYM}, -0x80000000, 0x7FFFFFFF }
+    }},
+    {  word , "word", 1, {
+        {{HEX, DEC, ROT, SYM}, 0          , 0x7FFFFFFF }
+    }}
+};
+
+void second_pass(FILE * src, FILE * out, HashT dict){
+    
+}
 void print_map_line(FILE * out, unsigned int out_line, long int arg) {
 
 }
 void dir_set(String name, String arg1, long int arg, HashT dict){
-    char[MAX_ARG] arg
-    put_copy_HashT(dict, )
+    Data key = new(arg1, String), val = new(arg, LongInt);
+    put_copy_HashT(dict, key, val );
 }
 
 void first_pass(FILE * src, FILE * out, HashT dict){
     unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
     unsigned short int narg;
     long int arg[2];
+    Data d_aux = NULL;
     bool error;
     TypeExpr estate = NAOSEI;
     TypeDir type_dir = NONE;
@@ -36,6 +96,7 @@ void first_pass(FILE * src, FILE * out, HashT dict){
             narg+1 == dir[type_dir].n_args
         ){
             switch(type_dir){
+                case NONE: break;
                 case set:
                     dir_set(str[0], str[1], arg[1], dict);
                     break;
@@ -176,11 +237,16 @@ void first_pass(FILE * src, FILE * out, HashT dict){
                 printf(" Instrucao: %s", mne[i].id);
                 estate = INSTRUCAO;
                 out_line += 1;
-            }else if(s_in_HashT(dict, str[2])){
-                printf(" Rot or Sym");
             }else{
-                printf(" Word not identified");
+                d_aux = new(str[2], String);
+                if(is_in_HashT(dict, d_aux)){
+                    printf(" Rot or Sym");
+                }else{
+                    printf(" Word not identified");
+                }
+                free_data(&d_aux);
             }
+
         }
         printf("\n");
         free(str[0]);
@@ -198,5 +264,5 @@ void build(FILE * src, FILE * out) {
     first_pass(src, out, dict);
     print_HashT(dict);
     second_pass(src, out, dict);
-    free_HashT(dict);
+    free_HashT(&dict);
 }

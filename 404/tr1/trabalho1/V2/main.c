@@ -9,7 +9,7 @@
 #include "Data.h"
 */
 #include "Builder.h"
-
+/*
 void build(FILE * src, FILE * out) {
     unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
     unsigned short int narg;
@@ -179,6 +179,7 @@ void build(FILE * src, FILE * out) {
         free(str[i]);
     }
 }
+*/
 int main(int argc, char *argv[]) {
 	FILE *src = NULL, *out = NULL;
 	String out_name;
