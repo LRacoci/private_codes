@@ -1,29 +1,30 @@
 #include "Builder.h"
 
 
+
 static struct m{
     char id[10];
     unsigned short int opcode;
     __extension__ bool arg:1;
     __extension__ bool option:1;
 } mne[MAX_INSTR] = {
-    {     "LD" , true  , false },
-    {     "LD-", true  , false },
-    {     "LD|", true  , false },
-    {    "LDmq", false , false },
-    { "LDmq_mx", true  , false },
-    {      "ST", true  , false },
-    {     "JMP", true  , true  },
-    {   "JUMP+", true  , true  },
-    {     "ADD", true  , false },
-    {    "ADD|", true  , false },
-    {     "SUB", true  , false },
-    {    "SUB|", true  , false },
-    {     "MUL", true  , false },
-    {     "DIF", true  , false },
-    {     "LSH", false , false },
-    {     "RSH", false , false },
-    {  "STaddr", true  , true  }
+    {     "LD" , 0x01 , true  , false },
+    {     "LD-", 0x02 , true  , false },
+    {     "LD|", 0x03 , true  , false },
+    {    "LDmq", 0x0A , false , false },
+    { "LDmq_mx", 0x09 , true  , false },
+    {      "ST", 0x21 , true  , false },
+    {     "JMP", 0x0D , true  , true  },
+    {   "JUMP+", 0x0F , true  , true  },
+    {     "ADD", 0x05 , true  , false },
+    {    "ADD|", 0x07 , true  , false },
+    {     "SUB", 0x06 , true  , false },
+    {    "SUB|", 0x08 , true  , false },
+    {     "MUL", 0x0B , true  , false },
+    {     "DIF", 0x0C , true  , false },
+    {     "LSH", 0x14 , false , false },
+    {     "RSH", 0x15 , false , false },
+    {  "STaddr", 0x12 , true  , true  }
 };
 
 
@@ -57,10 +58,21 @@ static struct Dir{
 };
 
 void second_pass(FILE * src, FILE * out, HashT dict){
-    
-}
-void print_map_line(FILE * out, unsigned int out_line, long int arg) {
 
+}
+
+void print_map_line(FILE * out, unsigned int out_line, long unsigned int arg) {
+    short int i, j;
+    long unsigned int l0[4];
+    unsigned int l[4] = {0xFF, 0xFFF, 0xFF, 0xFFF};
+    for(i = 0; i < 4; i++){
+        l0[i] = arg;
+        for(j = 0; j < i; j++){
+            l0[i] /= l[j];
+        }
+        l[i] = l0[i]%l[i];
+    }
+    fprintf(out, "%03X %02X %03X %02X %03X\n", out_line, l[0], l[1], l[2], l[3]);
 }
 void dir_set(String name, String arg1, long int arg, HashT dict){
     Data key = new(arg1, String), val = new(arg, LongInt);
@@ -69,39 +81,40 @@ void dir_set(String name, String arg1, long int arg, HashT dict){
 
 void first_pass(FILE * src, FILE * out, HashT dict){
     unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
-    unsigned short int narg;
+    unsigned short int narg = 0;
     long int arg[2];
-    Data d_aux = NULL;
-    bool error;
+    Data d_aux1 = NULL, d_aux2 = NULL;
+    bool is_instruction = false, instruction_ready = false;
     TypeExpr estate = NAOSEI;
     TypeDir type_dir = NONE;
+    TypeInstr type_instr = MAX_INSTR;
     String str[3] = {NULL};
-	for (
-			rewind(src),
-            in_line = 1,
-            out_line = 0,
-            aux = fgetword(src, &str[2]),
-            in_line += aux;
+	for(
+		rewind(src),
+        in_line = 1,
+        out_line = 0,
+        aux = fgetword(src, &str[2]),
+        in_line += aux;
 
-            aux != -1;
+        aux != -1;
 
-            aux = fgetword(src, &str[2]),
-            in_line += aux
-		)
-	{
+        aux = fgetword(src, &str[2]),
+        in_line += aux
+	){
         w = aux > 0 ? 0 : w + 1;
+        is_instruction = false;
         if (
             estate == DIRETIVA &&
             type_dir != NONE &&
-            narg+1 == dir[type_dir].n_args
+            narg == dir[type_dir].n_args
         ){
+
             switch(type_dir){
                 case NONE: break;
                 case set:
-                    dir_set(str[0], str[1], arg[1], dict);
                     break;
                 case org:
-                    out_line = arg[narg]*2;
+                    out_line = arg[narg-1]*2;
                     break;
                 case align:
                     if(out_line%2 == 1){
@@ -114,7 +127,7 @@ void first_pass(FILE * src, FILE * out, HashT dict){
                     if(out_line == 1){
                         stderror(in_line, "Trying to wfill from the right");
                     }
-                    if(narg == 0){
+                    if(narg == 1){
                         stderror(in_line, "Missing arguments for wfill");
                     }if(out_line/2 + arg[0] >= IAS_MAX_LINE_NUMBER){
                         stderror(in_line, "Wfill overflows the available memory");
@@ -125,15 +138,34 @@ void first_pass(FILE * src, FILE * out, HashT dict){
                     out_line += arg[0]*2;
                     break;
                 case word:
-                    if(out_line == 1){
+                    if(out_line % 2 == 1){
                         stderror(in_line, "Trying to put a word in the right");
                     }
                     print_map_line(out, out_line/2, arg[0]);
                     out_line += 2;
                     break;
             }
+            narg = 0;
+            type_dir = NONE;
         }
+        if (
+            estate == INSTRUCAO &&
+            type_instr < MAX_INSTR &&
+            instruction_ready
+        ){
+            i = mne[type_instr].opcode;
+            i += ((mne[type_instr].option) && (out_line % 2)) ? 1 : 0;
+            fprintf(out, "%02X ", i);
+            if(dir[type_instr].arg){
+                fprintf(out, "%03X", (unsigned int) arg[narg-1]);
+            }else{
+                fprintf(out, "000");
+            }
 
+            if(out_line%2 == 0){
+                fprintf(out, "\n");
+            }
+        }
         printf("Line in %2d, Line out %X %c, Word %d: %s ",
                 in_line, out_line/2, out_line % 2 ? 'D' : 'E', w, str[2]);
         printf("# ");
@@ -145,117 +177,146 @@ void first_pass(FILE * src, FILE * out, HashT dict){
             for(i = 0; i < MAX_DIR && strcmp(str[2], dir[i].id); i++);
             type_dir = i;
         }else
-        if(str[2][0] == '"' && str[2][strlen(str[2]) -1] == '"'){
-            if(estate == INSTRUCAO){
-                printf(" Argument of a instruction");
-            }else{
-                printf(" Error, Not a argument of a instruction");
-            }
 
-            narg = 0;
-            sscanf(str[2], "\"%[^\"]\"", str[2]);
-            if(str[2][0] == '0' && str[2][1] == 'x'){
-                sscanf(str[2], "0x%s", str[2]);
-                error = false;
-                for(i = 0; str[2][i] && !error; i++){
-                    if(!hexadecimal(str[2][i])){
-                        error = true;
-                        printf(" %c is not a valid hexadecimal character\n", str[2][i]);
-                    }
-                }if(!error){
-                    printf(" Hexadecimal Number");
-                }
-                sscanf(str[2], "%x", &aux);
-                arg[narg] = aux;
-            }else if(between('0', str[2][0], '9')){
-                error = false;
-                for(i = 0; str[2][i] && !error; i++){
-                    if(!decimal(str[2][i])){
-                        printf(" %c is not a valid decimal character",  str[2][i]);
-                        error = true;
-                    }
-                }if(!error){
-                    printf(" Decimal Number");
-                }
-                sscanf(str[2], "%ld", &arg[narg]);
-            }
-
-        }else
         if(str[2][strlen(str[2]) - 1] == ':'){
-            error = false;
             if(decimal(str[2][0])){
                 printf(" Erro, rotulo nao deve começar com número");
+                return;
             }
-            for(i = 0; str[2][i] == ':' && !error; i++){
-                error |= !(alphanumeric(str[2][i]) || str[2][i] == '_');
-            }
-            if(!error){
-                printf(" Rotulo");
-                estate = ROTULO;
-            }else{
-                printf(" Erro, rotulo nao alphanumerico ou  '_'");
-            }
-        }else
-        if(str[2][0] == '0' && str[2][1] == 'x'){
-            error = false;
-            for(i = 0; str[2][i] && !error; i++){
-                if(!hexadecimal(str[2][i])){
-                    error = true;
-                    printf(" %c is not a valid hexadecimal character\n", str[2][i]);
+            for(i = 0; str[2][i] == ':'; i++){
+                if(!(alphanumeric(str[2][i]) || str[2][i] == '_')){
+                    printf(" %c is not a valid Label character\n", str[2][i]);
                 }
-            }if(!error){
-                printf(" Hexadecimal Number");
             }
-            sscanf(str[2], "%x", &aux_read);
-            if(narg < 2){
-                arg[narg] = aux_read;
-            }else{
-                printf(" Error, more then two arguments");
-            }
-
-            narg++;
-        }else
-        if(between('0', str[2][0], '9')){
-            error = false;
-            for(i = 0; str[2][i] && !error; i++){
-                if(!decimal(str[2][i])){
-                    printf(" %c is not a valid decimal character",  str[2][i]);
-                    error = true;
-                }
-            }if(!error){
-                printf(" Decimal Number");
-            }
-            sscanf(str[2], "%u", &aux_read);
-            if(narg < 2){
-                arg[narg] = aux_read;
-            }else{
-                printf(" Error, more then two arguments");
-            }
+            printf(" Rotulo");
+            estate = ROTULO;
+            d_aux1 = new(str[2], String);
+            d_aux2 = new(out_line, LongInt);
+            put_copy_HashT(dict, d_aux1, d_aux2);
+            printf("\nHash Table: Dict\n");
+            print_HashT(dict);
+            free_data(&d_aux1);
+            free_data(&d_aux2);
         }else{
-            for(i = 0; i < MAX_INSTR && strcmp(str[2], mne[i].id); i++);
-            if(i != MAX_INSTR){
-                printf(" Instrucao: %s", mne[i].id);
-                estate = INSTRUCAO;
-                out_line += 1;
-            }else{
-                d_aux = new(str[2], String);
-                if(is_in_HashT(dict, d_aux)){
-                    printf(" Rot or Sym");
+            if(str[2][0] == '"' && str[2][strlen(str[2]) -1] == '"'){
+                if(estate == INSTRUCAO){
+                    printf(" Argument of a instruction");
+                    is_instruction = true;
+                    if(type_instr < MAX_INSTR && mne[type_instr].arg){
+                        instruction_ready = true;
+                    }else{
+                        printf("%s dont need arguments", mne[type_instr].id);
+                        return;
+                    }
                 }else{
-                    printf(" Word not identified");
+                    printf(" Error, Not a argument of a instruction");
+                    return;
                 }
-                free_data(&d_aux);
-            }
+                /*narg = 0;*/
+                sscanf(str[2], "\"%[^\"]\"", str[2]);
+                /*
+                if(str[2][0] == '0' && str[2][1] == 'x'){
+                    sscanf(str[2], "0x%s", str[2]);
+                    error = false;
+                    for(i = 0; str[2][i] && !error; i++){
+                        if(!hexadecimal(str[2][i])){
+                            error = true;
+                            printf(" %c is not a valid hexadecimal character\n", str[2][i]);
+                        }
+                    }if(!error){
+                        printf(" Hexadecimal Number");
+                    }
+                    sscanf(str[2], "%x", &aux);
+                    arg[narg] = aux;
+                }else if(between('0', str[2][0], '9')){
+                    error = false;
+                    for(i = 0; str[2][i] && !error; i++){
+                        if(!decimal(str[2][i])){
+                            printf(" %c is not a valid decimal character",  str[2][i]);
+                            error = true;
+                        }
+                    }if(!error){
+                        printf(" Decimal Number");
+                    }
+                    sscanf(str[2], "%ld", &arg[narg]);
+                }
+                */
+            }/*else*/
+            if(str[2][0] == '0' && str[2][1] == 'x'){
+                if(estate == DIRETIVA){
+                    printf(" Argument of a directive");
+                }else if(is_instruction){
+                    is_instruction = false;
+                }else if(estate == INSTRUCAO){
+                    printf(" Error, Not a argument of a directive");
+                    return;
+                }
 
+                for(i = 2; str[2][i]; i++){
+                    if(!hexadecimal(str[2][i])){
+                        printf(" %c is not a valid hexadecimal character\n", str[2][i]);
+                        return;
+                    }
+                }
+                printf(" Hexadecimal Number");
+                sscanf(str[2], "%x", &aux_read);
+                if(narg <= 2){
+                    arg[narg] = aux_read;
+                    narg++;
+                }else{
+                    printf(" Error, more then two arguments");
+                    return;
+                }
+            }else
+            if(between('0', str[2][0], '9')){
+                for(i = 0; str[2][i]; i++){
+                    if(!decimal(str[2][i])){
+                        printf(" %c is not a valid decimal character",  str[2][i]);
+                        return;
+                    }
+                }
+                printf(" Decimal Number");
+                sscanf(str[2], "%u", &aux_read);
+                if(narg <= 2){
+                    arg[narg] = aux_read;
+                    narg++;
+                }else{
+                    printf(" Error, more then two arguments");
+                }
+            }
+            else{
+                for (i = 0; i < MAX_INSTR && strcmp(str[2], mne[i].id); i++);
+                type_instr = i;
+                if(type_instr != MAX_INSTR){
+                    printf(" Instrucao: %s", mne[i].id);
+                    estate = INSTRUCAO;
+                    out_line += 1;
+                }else{
+                    d_aux1 = new(str[2], String);
+                    if(is_in_HashT(dict, d_aux1)){
+                        printf(" Rot or Sym");
+                    }else{
+                        printf(" Word not identified");
+                        return;
+                    }
+                    free_data(&d_aux1);
+                }
+
+            }
         }
         printf("\n");
-        free(str[0]);
-        for(i = 0; i < 1; i++){
+        if(str[0]){
+            free(str[0]);
+            str[0] = NULL;
+        }
+
+        for(i = 0; i < 2; i++){
             str[i] = str[i+1];
         }
 	}
     for(i = 0; i < 3; i++){
-        free(str[i]);
+        if(str[i])
+            free(str[i]);
     }
 }
 

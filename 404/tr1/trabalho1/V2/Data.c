@@ -82,7 +82,7 @@ void free_data(Data * d){
         return;
 
     if((*d)->del){
-        (*d)->del((*d)->info);
+        (*d)->del(&(*d)->info);
     }else{
         free((*d)->info);
     }
@@ -99,11 +99,13 @@ void ___String_print(Info i){
     printf("%s", *(String*)(i));
 }
 void ___String_free(Info *i){
+    free(*(String*)(*i));
     free(*i);
     *i = NULL;
 }
 Info ___String_copy(Info i){
-    Info resp = malloc((strlen((String)i) + 1)* sizeof(char));
+    String* resp = malloc(sizeof(String));
+    *resp = malloc(___String_size(i));
     strcpy(*(String*)resp, *(String*)i);
     return resp;
 }

@@ -4,7 +4,6 @@
 
 #define IAS_MAX_LINE_NUMBER 1024
 
-#define MAX_INSTR 17
 #define MAX_DIR 5
 
 
@@ -15,6 +14,12 @@ typedef enum TypeArg{
 	ROT
 } TypeArg;
 
+typedef enum TypeInstr{
+	LD = 0, LDm = 1, LD_abs = 2, LDmq = 3,
+	LDmq_mx = 4, ST = 5, JMP = 6, JUMP_plus = 7, ADD = 8,
+	ADD_abs = 9, SUB = 10, SUB_abs = 11, MUL = 12,
+	DIF = 13, LSH = 14, RSH = 15, STaddr = 16, MAX_INSTR = 17
+} TypeInstr;
 typedef enum TypeDir{
 	set = 0,
 	org = 1,

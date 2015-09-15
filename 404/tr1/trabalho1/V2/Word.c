@@ -62,7 +62,12 @@ unsigned int fgetword(FILE * src, String * str){
             comentario = true;
         }
     }
-    return c == EOF ? -1 : resp;
+    if(c==EOF){
+        free(*str);
+        *str = NULL;
+        return -1;
+    }
+    return resp;
 }
 
 String get_part_string(String src, int ini, int fim){

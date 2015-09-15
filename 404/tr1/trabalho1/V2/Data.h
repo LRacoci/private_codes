@@ -13,6 +13,7 @@ typedef enum DataType{
     ___List,
     ___int,
     ___LongInt,
+    ___OutLine,
     ___String
 } DataType;
 
@@ -47,6 +48,7 @@ new_data(
     Hash ___ ## staticType ## _hash(Info i);\
     Comp ___ ## staticType ## _comp(Info a, Info b)
 
+#define val(i) *(staticType*)(i)
 #define BodyDefinition(staticType, printfCode) \
     size_t ___ ## staticType ## _size(Info i){ \
         return sizeof(staticType); \

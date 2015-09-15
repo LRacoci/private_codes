@@ -159,18 +159,19 @@ bool drop_HashT(HashT t, KeyType key){
 void print_HashT(HashT t){
 	unsigned int i;
 	Lista aux;
+	String k;
+	unsigned int v;
 	for(i = 0; i < TAM_TABELA; i++){
-		aux = t->l[i];
-		while(aux){
+		for(aux = t->l[i]; aux; aux = aux->prox){
+			k = *(String*)(aux->kvP->key)->info;
+			v = *(unsigned int*)(aux->kvP->val)->info;
 			printf("(%u) ", i);
-			/*printf("%s \n", aux->kvP->val);*/
-			print_data(aux->kvP->val);
+			printf("%s", k);
 			printf("\"");
-			/*printf("%s\n", aux->kvP->key);*/
-			print_data(aux->kvP->val);
+			printf("%u[%c]", v/2, v%2?'d':'e');
 			printf("\"");
 			printf("\n");
-			aux = aux->prox;
+
 		}
 
 	}

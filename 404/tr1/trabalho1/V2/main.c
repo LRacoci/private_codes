@@ -10,6 +10,7 @@
 */
 #include "Builder.h"
 /*
+
 void build(FILE * src, FILE * out) {
     unsigned int i = 0, in_line, aux, out_line, w = 0, aux_read;
     unsigned short int narg;
@@ -18,15 +19,14 @@ void build(FILE * src, FILE * out) {
     TypeExpr estate = NAOSEI;
     TypeDir type_dir = NONE;
     String str[3] = {NULL};
-	for (
+
+    for (
 			rewind(src),
             in_line = 1,
             out_line = 0,
             aux = fgetword(src, &str[2]),
             in_line += aux;
-
             aux != -1;
-
             aux = fgetword(src, &str[2]),
             in_line += aux
 		)
@@ -212,7 +212,6 @@ int main(int argc, char *argv[]) {
 		);
 		exit(EXIT_FAIL);
 	}
-
     build(src, out);
 
     if(src)
