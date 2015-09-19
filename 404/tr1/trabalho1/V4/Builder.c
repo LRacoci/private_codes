@@ -94,7 +94,7 @@ bool validate_dir(String str, TypeDir * t, unsigned int line){
     sscanf(str, ".%s", str);
     for(i = 0; i < MAX_DIR && strcmp(str, dir[i].id); i++);
     if(i == MAX_DIR){
-        stderror(line, "[.%s] is not a valid directive", str);
+        stderror(line, "[.%s] is not a valid directive\n", str);
         return false;
     }
     *t = i;
@@ -121,7 +121,7 @@ bool validate_argument(String str, TypeArg * t, bool  *instr, unsigned int line)
     }else if(between('0', str[0], '9') || str[0] == '-'){
         for(i = 1; str[i]; i++){
             if(!decimal(str[i])){
-                stderror(line,"%c is not a valid decimal character",  str[i]);
+                stderror(line,"%c is not a valid decimal character\n",  str[i]);
                 return false;
             }
         }
@@ -133,14 +133,46 @@ bool validate_instruction(String str, TypeInstr *t, unsigned int line){
     unsigned short int i;
     for(i = 0; i < MAX_INSTR && strcmp(str, mne[i].id); i++);
     if(i == MAX_DIR){
-        stderror(line, "[.%s] is not a valid directive", str);
+        stderror(line, "[.%s] is not a valid directive\n", str);
         return false;
     }
     *t = i;
     return true;
 }
+bool interpret_instruction(
+    FILE * src,
+    TypeInstr t,
+    unsigned int *line,
+    MemMap map
+    String = aux;
+){
+    bool ok, instr = true;
+    unsigned int el, arg;
+    String strarg;
+    TypeArg ta;
 
-bool first_pass(FILE * src, FILE * out, HashT dict){
+    if(mne[t].arg){
+        strarg = fgetword(src, &el ,&ok)
+        if(!ok) return false;
+        ok = validate_argument(strarg, &ta, &instr, *line);
+        if(!instr){
+            stderror(
+                line,
+                "It is not formated as the argument of a instruction\n",
+            );
+            return false;
+        }
+
+        *line += el;
+        if(ta == DEC){
+            sscanf(strarg, "%d", &arg);
+        }else if(ta == HEX){
+            sscanf(strarg, "%X", &arg);
+        }
+    }
+}
+
+bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
     /* Retorno da função */
     bool ok = true;
     unsigned int
@@ -180,7 +212,7 @@ bool first_pass(FILE * src, FILE * out, HashT dict){
         /* Ainda pode ser argumento de diretiva ou instrução */
         }else{
             ok = validate_instruction(w, &t.i, line);
-            ok = ok? interpret_instruction(w, t.i, line) : ok
+            ok = ok? interpret_instruction(src, t.i, &line, map) : ok
             if (ok){
                 m_pos++;
             }
@@ -192,10 +224,13 @@ bool first_pass(FILE * src, FILE * out, HashT dict){
 
 bool build(FILE * src, FILE * out) {
     bool ok = true;
+    MemMap map = new_MemMap();
     HashT dict = new_HashT();
     ok = first_pass(src, out, dict);
     print_HashT(dict);
+    fprint_MemMap(stdout, map);
     ok = ok? second_pass(src, out, dict) : ok;
+    new_MemMap(&map);
     free_HashT(&dict);
     return ok;
 }
