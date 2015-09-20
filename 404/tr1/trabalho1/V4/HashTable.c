@@ -142,18 +142,20 @@ bool put_copy_HashT(HashT t, Data k, Data v){
 }
 bool is_Data_in_HashT(HashT t, Data key){
 	DataPair lixo = NULL;
-	return get_DataPair_HashT(t, key, lixo);
+	return get_DataPair_HashT(t, key, &lixo);
 }
 bool get_Data_HashT(HashT t, Data key, Data * val){
 	DataPair d_pair = NULL;
-	bool resp = get_DataPair_HashT(t, key, d_pair);
+	bool resp = get_DataPair_HashT(t, key, &d_pair);
+
 	if(resp){
-		*val = d_pair->val;
+		*val = copy_data(d_pair->val);
+		free_DataPair(&d_pair);
 	}
 	return resp;
 }
 /* Retorna se o key está na tabela ou não e o dataPair encontrado */
-bool get_DataPair_HashT(HashT t, Data key, DataPair dataPair){
+bool get_DataPair_HashT(HashT t, Data key, DataPair * dataPair){
 	Hash h = hash(key);
 	Lista ini = t->l[h], p = ini;
 	while(p && comp_data(p->dataP->key, key)){
@@ -163,7 +165,7 @@ bool get_DataPair_HashT(HashT t, Data key, DataPair dataPair){
 		return false;
 	}
 
-	*dataPair = *p->dataP;
+	*dataPair = copy_DataPair(p->dataP);
 	return true;
 }
 /* Remove da lista de índice calculado pelo hash */
@@ -200,12 +202,12 @@ void print_HashT(HashT t){
 		for(aux = t->l[i]; aux; aux = aux->prox){
 			k = *(String*)(aux->dataP->key)->info;
 			v = *(HashVal*)(aux->dataP->val)->info;
-			printf("(%02u) ", i);
-			printf("%s", k);
-			printf("(%c)", v.t);
-			printf(" \"");
-			printf("%03X[%c]", v.v/2, v.v%2?'d':'e');
-			printf("\"");
+			cfprintf(stdout, 94 ,"(%02u) ", i);
+			cfprintf(stdout, 93 ,"%s", k);
+			cfprintf(stdout, 96 ,"(%c)", v.t);
+			cfprintf(stdout, 97 ," \"");
+			cfprintf(stdout, 97 ,"%03X[%c]", v.v/2, v.v%2?'d':'e');
+			cfprintf(stdout, 97 ,"\"");
 			printf("\n");
 
 		}

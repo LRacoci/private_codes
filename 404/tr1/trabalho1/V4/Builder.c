@@ -178,6 +178,7 @@ bool interpret_instr(
 ){
     bool ok, instr = true;
     unsigned int el, arg;
+    char c;
     String strarg;
     TypeArg ta;
     /*String aux;*/
@@ -189,6 +190,8 @@ bool interpret_instr(
         );
     }
     if(mne[t].n_arg){
+        el = 0;
+        ok = true;
         strarg = fgetword(src, &el ,&ok);
                 if(el > 0 || !ok){
             stderror(
@@ -206,16 +209,51 @@ bool interpret_instr(
             );
             return false;
         }
-        sscanf(strarg, "\"%s\"", strarg);
+        sscanf(strarg, "\"%[^\"]\"", strarg);
         if(ta == DEC){
             sscanf(strarg, "%u", &arg);
+            if(!between(0, arg, MAX_MEM_MAP)){
+                stderror(line, "Argument %d out of bounds\n", arg);
+                ok = false;
+            }
         }else if(ta == HEX){
             sscanf(strarg, "0x%X", &arg);
+            if(!between(0, arg, MAX_MEM_MAP)){
+                stderror(line, "Argument 0x%03X out of bounds\n", arg);
+                ok = false;
+            }
+        }else if(ta == ROT || ta == SYM){
+            if(get_HashT(dict, strarg, &arg, &c)){
+                if(ta == SYM && c != 'S'){
+                    stderror(
+                        line,
+                        "Argument %s shoud be a SYM but it is a %c\n",
+                        strarg, c
+                    );
+                }else if(ta == ROT && c != 'L'){
+                    stderror(
+                        line,
+                        "Argument %s shoud be a ROT but it is a %c\n",
+                        strarg, c
+                    );
+                }else if(!char_in_string(c, "LS")){
+                    stderror(
+                        line,
+                        "Invalid argument: %s\n",
+                        strarg
+                    );
+                }
+            }else{
+                if(second_time){
+                    stderror(
+                        line,
+                        "Invalid argument: %s\n",
+                        strarg
+                    );
+                }
+            }
         }
-        if(!between(0, arg, MAX_MEM_MAP)){
-            stderror(line, "Argument %s out of bounds\n", strarg);
-            ok = false;
-        }
+
         free(strarg);
     }
     /* Verificar se não há argumentos extras */
@@ -283,10 +321,11 @@ bool threat_dir(
 
         case WORD:
             if(m->pos % 2 == 1){
-                stderror(line, "Trying to put a word in the right");
-            }
-            if(m->pos/2 + 1 >= IAS_MAX_LINE_NUMBER){
-                stderror(line, "Wfill overflows the available memory");
+                stderror(line, "Trying to put a word in the right\n");
+                ok = false;
+            }else if(m->pos/2 + 1 >= IAS_MAX_LINE_NUMBER){
+                stderror(line, "Wfill overflows the available memory\n");
+                ok = false;
             }
             ok = ok ? insert_word_MemMap(m, arg[0].u, line) : false;
             break;
@@ -295,7 +334,7 @@ bool threat_dir(
             if(m->pos % 2 == 1){
                 stderror(line, "Trying to wfill from the right");
             }if(m->pos/2 + arg[0].u >= IAS_MAX_LINE_NUMBER){
-                stderror(line, "Wfill overflows the available memory");
+                stderror(line, "Wfill overflows the available memory\n");
             }
             for(i = 0; i < arg[0].u; i++){
                 ok = ok ? insert_word_MemMap(m, arg[1].ld, line) : false;
@@ -362,78 +401,74 @@ bool interpret_dir(
         for(j = 0; j < 4 && !arg_flag && ok; j++){
             if(ta == dir[t].arg[i].type[j]){
                 arg_flag = true;
-                switch(ta){
-                    case DEC:
-                        sscanf(strarg, "%ld", &arg[i].ld);
-                        if(!between(
-                            dir[t].arg[i].lowest,
-                            arg[i].ld,
-                            dir[t].arg[i].highest
-                        )){
-                            stderror(
-                                line,
-                                "Argument %ld out of bounds\n",
-                                arg[i].ld
-                            );
-                            ok = false;
-                        }
-                    break;
-                    case HEX:
-                        sscanf(strarg, "0x%X", &arg[i].u);
-                        if(!between(
-                            dir[t].arg[i].lowest,
-                            arg[i].u, dir[t].arg[i].highest
-                        )){
-                            stderror(
-                                line,
-                                "Argument 0x%010X out of bounds\n",
-                                arg[i].u
-                            );
-                            ok = false;
-                        }
-                    break;
-                    case ROT: case SYM:
-                        if(get_HashT(dict, strarg, &arg[i].u, &c)){
-                            if(ta == SYM && c != 'S'){
-                                stderror(
-                                    line,
-                                    "Argument %s shoud be a SYM but it is a %c\n",
-                                    strarg, c
-                                );
-                            }else if(ta == ROT && c != 'L'){
-                                stderror(
-                                    line,
-                                    "Argument %s shoud be a ROT but it is a %c\n",
-                                    strarg, c
-                                );
-                            }else if(c == 'L' && t == SET && i == 0){
-                                stderror(
-                                    line,
-                                    "Redeclaration of %s\n",
-                                    strarg
-                                );
-                            }else if(!char_in_string(c, "LS")){
-                                stderror(
-                                    line,
-                                    "Invalid argument: %s\n",
-                                    strarg
-                                );
-                            }
-                        }else if(t == SET && i == 0){
-                                strcpy(arg[i].s, strarg);
-                        }else{
-                            if(second_time){
-                                stderror(
-                                    line,
-                                    "Invalid argument: %s\n",
-                                    strarg
-                                );
-                            }
-                        }
-                        strcpy(arg[i].s, strarg);
-                    break;
+                if(ta == DEC){
+                    sscanf(strarg, "%ld", &arg[i].ld);
+                    if(!between(
+                        dir[t].arg[i].lowest,
+                        arg[i].ld,
+                        dir[t].arg[i].highest
+                    )){
+                        stderror(
+                            line,
+                            "Argument %ld out of bounds\n",
+                            arg[i].ld
+                        );
+                        ok = false;
+                    }
+                }else if(ta == HEX){
+                    sscanf(strarg, "0x%X", &arg[i].u);
+                    if(!between(
+                        dir[t].arg[i].lowest,
+                        arg[i].u, dir[t].arg[i].highest
+                    )){
+                        stderror(
+                            line,
+                            "Argument 0x%010X out of bounds\n",
+                            arg[i].u
+                        );
+                        ok = false;
+                    }
                 }
-
+                else if(ta == ROT || ta == SYM){
+                    if(get_HashT(dict, strarg, &arg[i].u, &c)){
+                        if(ta == SYM && c != 'S'){
+                            stderror(
+                                line,
+                                "Argument %s shoud be a SYM but it is a %c\n",
+                                strarg, c
+                            );
+                        }else if(ta == ROT && c != 'L'){
+                            stderror(
+                                line,
+                                "Argument %s shoud be a ROT but it is a %c\n",
+                                strarg, c
+                            );
+                        }else if(c == 'L' && t == SET && i == 0){
+                            stderror(
+                                line,
+                                "Redeclaration of %s\n",
+                                strarg
+                            );
+                        }else if(!char_in_string(c, "LS")){
+                            stderror(
+                                line,
+                                "Invalid argument: %s\n",
+                                strarg
+                            );
+                        }
+                    }else if(t == SET && i == 0){
+                            strcpy(arg[i].s, strarg);
+                    }else{
+                        if(second_time){
+                            stderror(
+                                line,
+                                "Invalid argument: %s\n",
+                                strarg
+                            );
+                        }
+                    }
+                    strcpy(arg[i].s, strarg);
+                }
             }
         }
         free(strarg);
@@ -484,6 +519,7 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
             ok = ok ? interpret_dir(src, t.i, line, map, dict, false) : false;
         }else if(seems_label(w)){
             ok = validate_label(w, line, dict);
+            sscanf(w, "%[^:]:", w);
             put_HashT(dict, w, map->pos, 'L');
             print_HashT(dict);
             printf("\n");
@@ -561,13 +597,22 @@ bool build(FILE * src, FILE * out) {
     bool ok = true;
     MemMap map = new_MemMap();
     HashT dict = new_HashT();
+    cfprintf(stdout, 92,"Começando Primeira Montagem\n");
     ok = first_pass(src, out, dict, map);
+    cfprintf(stdout, 92, "Terminada primeira montagem\n");
     print_HashT(dict);
-    fprint_MemMap(out, map);
+    fprint_MemMap(stdout, map);
+    printf("\n");
+
+    free_MemMap(&map);
+    map = new_MemMap();
+    cfprintf(stdout, 92, "Começando Segunda Montagem\n");
     ok = ok? second_pass(src, out, dict, map): ok;
     printf("\n");
+    print_HashT(dict);
     fprint_MemMap(stdout, map);
-    fprint_MemMap(out, map);
+    printf("\n");
+
     free_MemMap(&map);
     free_HashT(&dict);
     return ok;

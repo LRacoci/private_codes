@@ -4,6 +4,7 @@
 #include <string.h>
 #include "auxTypes.h"
 #include "Data.h"
+#include "genericDefs.h"
 
 
 #define TAM_TABELA 50
@@ -61,7 +62,7 @@ bool put_copy_HashT(HashT t, Data k, Data v);
 bool is_Data_in_HashT(HashT t, Data key);
 bool get_Data_HashT(HashT t, Data key, Data * val);
 /* Retorna se o key está na tabela ou não e o dataPair encontrado */
-bool get_DataPair_HashT(HashT t, Data key, DataPair dataPair);
+bool get_DataPair_HashT(HashT t, Data key, DataPair * dataPair);
 /* Remove da lista de índice calculado pelo hash */
 bool drop_Data_HashT(HashT t, Data key);
 /* Imprime a tabela conforme especificado no enunciado */

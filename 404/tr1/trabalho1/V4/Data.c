@@ -136,7 +136,7 @@ Hash ___String_hash(Info i){
     return h;
 }
 Comp ___String_comp(Info a, Info b){
-    return strcmp((String) a, (String) b);
+    return strcmp(*(String*) a, *(String*) b);
 }
 
 BodyDefinition(int, "%2d", st)

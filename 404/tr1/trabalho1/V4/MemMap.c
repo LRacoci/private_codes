@@ -126,6 +126,7 @@ void fprint_MemWord(FILE * out, MemWord p){
 	if(p == NULL){
 		return;
 	}
+	fprintf(out, "%03X ", p->pos);
 	if(p->is_word){
 		fprint_ias_format(out, p->c.w.w);
 	}else{
