@@ -15,10 +15,11 @@ typedef enum DataType{
     ___int,
     ___LongInt,
     ___OutLine,
-    ___String
+    ___String,
+    ___HashVal
 } DataType;
 
-#define numcomp(a, b) (((a) == (b)) ? 0 : ((a) < (b))? -1 : 1)
+#define numcmp(a, b) (((a) == (b)) ? 0 : ((a) < (b))? -1 : 1)
 
 /* Example with type = List and v = l:
 new_data(
@@ -52,12 +53,13 @@ new_data(
     Comp ___ ## staticType ## _comp(Info a, Info b)
 
 #define val(i) *(staticType*)(i)
-#define BodyDefinition(staticType, printfCode) \
+#define BodyDefinition(staticType, ...) \
     size_t ___ ## staticType ## _size(Info i){ \
         return sizeof(staticType); \
     } \
     void ___ ## staticType ## _print(Info i){ \
-        printf(printfCode, *(staticType*)(i)); \
+        staticType st = *(staticType*)(i); \
+        printf(__VA_ARGS__); \
     } \
     void ___ ## staticType ## _free(Info *i){ \
         free(*i); \
@@ -120,5 +122,6 @@ Comp ___String_comp(Info a, Info b);
 
 HeadDefinition(int);
 HeadDefinition(LongInt);
+
 
 #endif

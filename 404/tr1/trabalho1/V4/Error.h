@@ -17,16 +17,18 @@
 }
 */
 #define stderror(line, ...){ \
+    fprintf(stderr, "\033[0;91m"); \
     if((line) < IAS_MAX_LINE_NUMBER){ \
 		fprintf(stderr, "ERROR on line %d\n", (line)); \
 	} \
-		fprintf(stderr, __VA_ARGS__); \
-		exit(EXIT_FAIL); \
+	fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, "\033[0;00m"); \
 }
 
-#define make_sure(line, condition, ...) {\
+#define make_sure(line, condition, what_to_do , ...) {\
     if(!(condition)){ \
         stderror(line, __VA_ARGS__); \
+        what_to_do; \
     } \
 }
 

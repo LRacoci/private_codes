@@ -33,10 +33,10 @@ bool element_of(
     }
     return false;
 }
-bool fungetword(FILE * src, String str){
+bool ungetword(FILE * src, String str){
     unsigned int i, len = strlen(str);
     for(i = len - 1; i >= 0; i--){
-        if(ungetc(src, str[i]) == EOF){
+        if(ungetc(str[i], src) == EOF){
             return false;
         }
     }

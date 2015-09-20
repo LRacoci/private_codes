@@ -9,11 +9,10 @@
 #include "Word.h"
 #include "HashTable.h"
 #include "iasDefs.c"
+#include "MemMap.h"
 
 #define seems_directive(String) (String[0] == '.')
 #define seems_label(String) (String[len-1] == ':')
 #define seems_argument(String) (String[0] == '"' && String[len-1] == '"')
-bool first_pass(FILE * src, FILE * out, HashT dict);
-bool second_pass(FILE * src, FILE * out, HashT dict);
 
 bool build(FILE * src, FILE * out);

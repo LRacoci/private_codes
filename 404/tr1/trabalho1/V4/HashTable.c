@@ -4,9 +4,8 @@
 
 #include "HashTable.h"
 
-
-/* Calcula o hash de uma KeyType */
-Hash hash(KeyType key){
+/* Calcula o hash de uma Data */
+Hash hash(Data key){
 	/*unsigned int i;*/
 	/* Para garantir que o resultado seja positivo */
 	Hash resp = h(key);
@@ -19,31 +18,59 @@ Hash hash(KeyType key){
 	return (Hash)resp%TAM_TABELA;
 }
 
-/* IMPLEMENTAÇÃO DAS FUNÇÕES DE MINHA TAD */
-/*****************************************/
-/****************************************/
+bool put_HashVal_HashT(HashT t, String k, HashVal v){
+	bool resp;
+	Data dk = new(k, String);
+	Data dv = new(v, HashVal);
+	resp = put_copy_HashT(t, dk, dv);
+	free_data(&dk);
+	free_data(&dv);
+	return resp;
+}
+bool put_HashT(HashT t, String k, unsigned int val, char c){
+	HashVal hv;
+	hv.v = val;
+	hv.t = c;
+	return put_HashVal_HashT(t, k, hv);
+}
+bool is_in_HashT(HashT t, String key, char * c){
+	bool resp;
+	unsigned int lixo;
+	resp = get_HashT(t, key, &lixo,c);
+	return resp;
+}
 
-
-KVPair new_KVPair(KeyType a, ValType b){
-	KVPair neo = malloc(sizeof(sKVPair));
+bool get_HashT(HashT t, String key, unsigned int * val, char * c){
+	bool resp;
+	Data dk = new(key, String), dv;
+	resp = get_Data_HashT(t, dk, &dv);
+	free_data(&dk);
+	if(resp){
+		*val = ((HashVal*)dv->info)->v;
+		*c = ((HashVal*)dv->info)->t;
+	}
+	return resp;
+}
+DataPair new_DataPair(Data a, Data b){
+	DataPair neo = malloc(sizeof(sDataPair));
 	neo->key = a;
 	neo->val = b;
 	return neo;
 }
 
-KVPair copy_KVPair(KVPair src){
-	KVPair copy;
+DataPair copy_DataPair(DataPair src){
+	DataPair copy;
 	if(!src) {
 		return NULL;
 	}
-	copy = malloc(sizeof(sKVPair));
+	copy = malloc(sizeof(sDataPair));
 	copy->key = copy_data(src->key);
 	copy->val = copy_data(src->val);
 	return copy;
 
 
 }
-bool free_KVPair(KVPair *del){
+bool free_DataPair(DataPair *del){
 	if(!(*del)) return false;
 	free_data(&(*del)->key);
 	free_data(&(*del)->val);
@@ -69,11 +96,11 @@ void free_HashT(HashT *t){
 	short unsigned int i;
 	Lista temp, p;
 	for(i = 0; i < TAM_TABELA; i++){
-	p = (*t)->l[i];
+		p = (*t)->l[i];
 		while(p){
 			temp = p;
 			p = p->prox;
-			free_KVPair(&(temp->kvP));
+			free_DataPair(&(temp->dataP));
 			free(temp);
 		}
 	}
@@ -82,23 +109,23 @@ void free_HashT(HashT *t){
 }
 
 /* Insere na lista de índice calculado pelo hash */
-bool put_KVPair_HashT(HashT t, KVPair kvPair){
-	Hash h = hash(kvPair->key);
+bool put_DataPair_HashT(HashT t, DataPair dataPair){
+	Hash h = hash(dataPair->key);
 	Lista nova, *aux = &(t->l[h]);
 
 	/* Avança aux até achar a posição correta de inserir */
-	while(*aux && comp_data((*aux)->kvP->key, kvPair->key) < 0){
+	while(*aux && comp_data((*aux)->dataP->key, dataPair->key) < 0){
 		aux = &((*aux)->prox);
 	}
 	/* Verifica se esse key já está na Tabela */
-	if(*aux && comp_data(kvPair->key, (*aux)->kvP->key) == 0){
+	if(*aux && comp_data(dataPair->key, (*aux)->dataP->key) == 0){
 		return false;
 	}
 
-	/* Insere na lista t->l[h] o kvPair*/
-	nova = malloc(sizeof(Lista));
-	/* Copia o kvPair */
-	nova->kvP = kvPair;
+	/* Insere na lista t->l[h] o dataPair*/
+	nova = malloc(sizeof(No));
+	/* Copia o dataPair */
+	nova->dataP = dataPair;
 
 	nova->prox = *aux;
 	*aux = nova;
@@ -107,32 +134,40 @@ bool put_KVPair_HashT(HashT t, KVPair kvPair){
 
 	return true;
 }
-bool put_HashT(HashT t, KeyType k, ValType v){
-	return put_KVPair_HashT(t, new_KVPair(k, v));
+bool put_Data_HashT(HashT t, Data k, Data v){
+	return put_DataPair_HashT(t, new_DataPair(k, v));
 }
-bool put_copy_HashT(HashT t, KeyType k, ValType v){
-	return put_KVPair_HashT(t, copy_KVPair(new_KVPair(k, v)));
+bool put_copy_HashT(HashT t, Data k, Data v){
+	return put_DataPair_HashT(t, copy_DataPair(new_DataPair(k, v)));
 }
-bool is_in_HashT(HashT t, KeyType key){
-	KVPair lixo = NULL;
-	return get_HashT(t, key, lixo);
+bool is_Data_in_HashT(HashT t, Data key){
+	DataPair lixo = NULL;
+	return get_DataPair_HashT(t, key, lixo);
 }
-/* Retorna se o key está na tabela ou não e o kvPair encontrado */
-bool get_HashT(HashT t, KeyType key, KVPair kvPair){
+bool get_Data_HashT(HashT t, Data key, Data * val){
+	DataPair d_pair = NULL;
+	bool resp = get_DataPair_HashT(t, key, d_pair);
+	if(resp){
+		*val = d_pair->val;
+	}
+	return resp;
+}
+/* Retorna se o key está na tabela ou não e o dataPair encontrado */
+bool get_DataPair_HashT(HashT t, Data key, DataPair dataPair){
 	Hash h = hash(key);
 	Lista ini = t->l[h], p = ini;
-	while(p && comp_data(p->kvP->key, key)){
+	while(p && comp_data(p->dataP->key, key)){
 		p = p->prox;
 	}
 	if(p == NULL){
 		return false;
 	}
 
-	*kvPair = *p->kvP;
+	*dataPair = *p->dataP;
 	return true;
 }
 /* Remove da lista de índice calculado pelo hash */
-bool drop_HashT(HashT t, KeyType key){
+bool drop_Data_HashT(HashT t, Data key){
 	Hash h = hash(key);
 	Lista *p = &(t->l[h]), temp;
 
@@ -140,7 +175,7 @@ bool drop_HashT(HashT t, KeyType key){
 		return false;
 	}
 	/* Procura o key em key na lista de índice h */
-	while(*p != NULL && comp_data((*p)->kvP->key, key)){
+	while(*p != NULL && comp_data((*p)->dataP->key, key)){
 		p = &((*p)->prox);
 	}
 	/* Se chegou ao final da lista e não achou nada, retorna falso */
@@ -149,8 +184,8 @@ bool drop_HashT(HashT t, KeyType key){
 	}
 	temp = *p;
 	*p = (*p)->prox;
-	free(temp->kvP->key);
-	free(temp->kvP);
+	free(temp->dataP->key);
+	free(temp->dataP);
 	free(temp);
 	t->size--;
 	return true;
@@ -160,15 +195,16 @@ void print_HashT(HashT t){
 	unsigned int i;
 	Lista aux;
 	String k;
-	unsigned int v;
+	HashVal v;
 	for(i = 0; i < TAM_TABELA; i++){
 		for(aux = t->l[i]; aux; aux = aux->prox){
-			k = *(String*)(aux->kvP->key)->info;
-			v = *(unsigned int*)(aux->kvP->val)->info;
-			printf("(%u) ", i);
+			k = *(String*)(aux->dataP->key)->info;
+			v = *(HashVal*)(aux->dataP->val)->info;
+			printf("(%02u) ", i);
 			printf("%s", k);
-			printf("\"");
-			printf("%u[%c]", v/2, v%2?'d':'e');
+			printf("(%c)", v.t);
+			printf(" \"");
+			printf("%03X[%c]", v.v/2, v.v%2?'d':'e');
 			printf("\"");
 			printf("\n");
 
@@ -179,4 +215,32 @@ void print_HashT(HashT t){
 
 int size_HashT(HashT t){
 	return t->size;
+}
+
+
+size_t ___HashVal_size(Info i){
+    return sizeof(HashVal);
+}
+void ___HashVal_print(Info i){
+	HashVal p = *(HashVal*)(i);
+	printf("%c %03X", p.t, p.v);
+}
+void ___HashVal_free(Info *i){
+    free(*i);
+    *i = NULL;
+}
+Info ___HashVal_copy(Info i){
+    HashVal* resp;
+    if(!i){
+        return i;
+    }
+    resp = malloc(sizeof(HashVal));
+	*resp = *(HashVal*)i;
+    return resp;
+}
+Hash ___HashVal_hash(Info i){
+    return (*(HashVal*)i).v;
+}
+Comp ___HashVal_comp(Info a, Info b){
+    return numcmp((*(HashVal*)a).v, (*(HashVal*)b).v);
 }

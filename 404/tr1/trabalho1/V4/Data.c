@@ -93,7 +93,9 @@ void free_data(Data * d){
 /* String Basics Definition */
 /***************************/
 size_t ___String_size(Info i){
-    return sizeof(char) * (strlen((String)i) + 1);
+    return sizeof(char) * (
+        strlen((String)i) + 1
+    );
 }
 void ___String_print(Info i){
     printf("%s", *(String*)(i));
@@ -104,22 +106,29 @@ void ___String_free(Info *i){
     *i = NULL;
 }
 Info ___String_copy(Info i){
+    unsigned int len, j;
     String* resp;
     if(!i){
         return i;
     }
+    for(len = 0; (*(String*)i)[len] != '\0'; len++);
+    len++;
     resp = malloc(sizeof(String));
-    *resp = malloc(___String_size(i));
-    strcpy(*(String*)resp, *(String*)i);
+    *resp = malloc(len*sizeof(char));
+
+    for(j = 0; j < len; j++){
+        (*resp)[j] = (*(String*)i)[j];
+    }
     return resp;
 }
 /* djb2 by Dan Bernstein */
 Hash ___String_hash(Info i){
+    unsigned int j;
     unsigned char* str = *(unsigned char* *) i;
     Hash h = 5381;
     int c;
-    for(h = 5381 ; *str; str++){
-        c = *str;
+    for(h = 5381, j = 0; str[j]; j++){
+        c = str[j];
         h = ((h << 5) + h) + c;
 
     }
@@ -130,5 +139,5 @@ Comp ___String_comp(Info a, Info b){
     return strcmp((String) a, (String) b);
 }
 
-BodyDefinition(int, "%2d")
-BodyDefinition(LongInt, "%2ld")
+BodyDefinition(int, "%2d", st)
+BodyDefinition(LongInt, "%2ld", st)

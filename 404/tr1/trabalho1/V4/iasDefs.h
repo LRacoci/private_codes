@@ -13,11 +13,11 @@ typedef enum TypeInstr{
 	DIF = 13, LSH = 14, RSH = 15, STaddr = 16, MAX_INSTR = 17
 } TypeInstr;
 typedef enum TypeDir{
-	set = 0,
-	org = 1,
-	align = 2,
-	wfill = 3,
-    word = 4,
+	SET = 0,
+	ORG = 1,
+	ALIGN = 2,
+	WFILL = 3,
+    WORD = 4,
     NONE = 5
 } TypeDir;
 

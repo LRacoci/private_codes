@@ -5,21 +5,23 @@
 #include "auxTypes.h"
 #include "Data.h"
 
-/* STRUCTS, DEFINIÇÕES E CABEÇALHOS DAS MINHAS FUNÇÕES DA TAD */
-/*************************************************************/
+
 #define TAM_TABELA 50
 
-typedef Data ValType;
-typedef Data KeyType;
+typedef struct HashVal{
+	char t;
+	unsigned int v;
+} HashVal;
 
-/* Define a struct KVPair */
-typedef struct sKVPair{
-	KeyType key;
-	ValType val;
-}sKVPair, *KVPair;
+
+/* Define a struct DataPair */
+typedef struct sDataPair{
+	Data key;
+	Data val;
+}sDataPair, *DataPair;
 /* Define o nó de uma lista ligada simples sem nó cabeça */
 typedef struct No{
-	KVPair kvP;
+	DataPair dataP;
 	struct No *prox;
 } No, *Lista;
 /* Define a estrutura geral da tabela hash */
@@ -30,23 +32,40 @@ typedef struct sHashT{
 } sHashT, * HashT;
 
 
+
+
 /* TAD: Tabela Hash */
 /*******************/
 
-/* Cria, aloca e inicializa uma nova tabela hash */
+bool put_HashVal_HashT(HashT t, String k, HashVal v);
+bool put_HashT(HashT t, String k, unsigned int val, char c);
+bool is_in_HashT(HashT t, String key, char * c);
+
+bool get_HashT(HashT t, String key, unsigned int * val, char * c);
+DataPair new_DataPair(Data a, Data b);
+
+DataPair copy_DataPair(DataPair src);
+bool free_DataPair(DataPair *del);
+/* TAD: Tabela Hash */
+/*******************/
+
+/* Cria vetor de listas e inicializa todas as posições com NULL */
 HashT new_HashT();
-/* Remove e desaloca a tabela hash passada como argumento */
+/* Libera todos os possíveis campos alocados pra uma tabela */
 void free_HashT(HashT *t);
-/* Insere apropriadamente o struct pair a na tabela t */
-bool put_KVPair_HashT(HashT t, KVPair kvPair);
-bool put_HashT(HashT t, KeyType k, ValType v);
-bool put_copy_HashT(HashT t, KeyType k, ValType v);
-/* Consulta se o nome em buf está em t e devolve em a o pair correspondente */
-bool get_HashT(HashT t, KeyType key, KVPair kvPair);
-bool is_in_HashT(HashT t, KeyType key);
-/* Remove o pair que tem o nome em buf */
-bool drop_HashT(HashT t, KeyType key);
-/* Imprime de acordo com o enunciado */
+
+/* Insere na lista de índice calculado pelo hash */
+bool put_DataPair_HashT(HashT t, DataPair dataPair);
+bool put_Data_HashT(HashT t, Data k, Data v);
+bool put_copy_HashT(HashT t, Data k, Data v);
+bool is_Data_in_HashT(HashT t, Data key);
+bool get_Data_HashT(HashT t, Data key, Data * val);
+/* Retorna se o key está na tabela ou não e o dataPair encontrado */
+bool get_DataPair_HashT(HashT t, Data key, DataPair dataPair);
+/* Remove da lista de índice calculado pelo hash */
+bool drop_Data_HashT(HashT t, Data key);
+/* Imprime a tabela conforme especificado no enunciado */
 void print_HashT(HashT t);
-/* Devolve o numero de pairs na tabela */
+
 int size_HashT(HashT t);
+HeadDefinition(HashVal);

@@ -17,10 +17,10 @@ typedef enum TypeWord{
     TYPE_WORD_NONE
 }TypeWord;
 typedef enum TypeArg{
-	HEX,
-	DEC,
-	SYM,
-	ROT
+	HEX = 1,
+	DEC = 2,
+	SYM = 3,
+	ROT = 4
 } TypeArg;
 typedef struct sArg{
     TypeArg t;
@@ -51,7 +51,8 @@ typedef struct sWord {
     }c;
 } sWord, *Word;
 
- String fgetword(FILE * src, unsigned int * lines, bool * ok);
+bool ungetword(FILE * src, String str);
+String fgetword(FILE * src, unsigned int * lines, bool * ok);
 
 String get_part_string(String src, int ini, int fim);
 

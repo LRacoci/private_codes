@@ -32,5 +32,5 @@ typedef short int Comp;
 #endif
 
 #ifndef abs
-#define abs(x) ( sign(x) * x)
+#define absolute(x) (sign(x) * (x))
 #endif
