@@ -15,4 +15,9 @@
 #define seems_label(String) (String[len-1] == ':')
 #define seems_argument(String) (String[0] == '"' && String[len-1] == '"')
 
+typedef union Type{
+    TypeDir   d;
+    TypeInstr i;
+    TypeArg   a;
+} GenericType;
 bool build(FILE * src, FILE * out);

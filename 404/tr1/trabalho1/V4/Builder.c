@@ -1,5 +1,6 @@
 #include "Builder.h"
 
+
 typedef union DirArg {
     char s[128];
     short int sd;
@@ -95,6 +96,7 @@ bool validate_arg_format(
     bool  *instr,
     unsigned int line,
     HashT dict,
+    bool maybe_sym,
     bool second_time
 ){
     unsigned short int i;
@@ -153,6 +155,11 @@ bool validate_arg_format(
                 aux
             );
         }
+        if(maybe_sym){
+            *t = SYM;
+        }else{
+            *t = ROT;
+        }
     }
     free(aux);
     return ok;
@@ -201,7 +208,7 @@ bool interpret_instr(
             );
             return false;
         }
-        ok = validate_arg_format(strarg, &ta, &instr, line, dict, second_time);
+        ok = validate_arg_format(strarg, &ta, &instr, line, dict, false, second_time);
         if(!instr){
             stderror(
                 line,
@@ -261,19 +268,16 @@ bool interpret_instr(
     ok = ok ? insert_instr_MemMap(map, mne[t].opcode, arg, line) : false;
     return ok;
 }
-void dir_set(String name, String arg1, unsigned int arg, HashT dict){
-    put_HashT(dict, arg1, arg, 'S');
-}
 
 bool validate_label(String str, unsigned int line, HashT ht){
     bool resp = true;
     char c = ' ';
-    unsigned int i;
+    unsigned int i, len = strlen(str);
     if(decimal(str[0])){
         stderror(line, "Erro, rotulo nao deve começar com número\n");
         return false;
     }
-    for(i = 0; str[i] == ':'; i++){
+    for(i = 0; i < len-1; i++){
         if(!(alphanumeric(str[i]) || str[i] == '_')){
             stderror(line, " %c is not a valid Label character\n", str[i]);
         }
@@ -295,18 +299,21 @@ bool validate_dir(String str, TypeDir * t, unsigned int line){
     *t = i;
     return true;
 }
-bool threat_dir(
+bool chose_dir(
     TypeDir t,
     DirArg arg[],
     unsigned int line,
     HashT ht,
-    MemMap m
+    MemMap m,
+    bool second_time
 ){
     bool ok = true;
     unsigned int i;
     switch(t){
         case SET:
-            put_HashT(ht, arg[0].s, arg[1].u, 'S');
+            if(second_time){
+                put_HashT(ht, arg[0].s, arg[1].u, 'S');
+            }
             break;
 
         case ORG:
@@ -386,6 +393,7 @@ bool interpret_dir(
             &instr,
             line,
             dict,
+            t == SET && i == 0,
             second_time
         );
         if(instr){
@@ -475,7 +483,7 @@ bool interpret_dir(
     }
     /* Verificar se não há argumentos extras */
     ok = ok ? end_line(src, dir[t].id, line) : false;
-    ok = ok ? threat_dir(t, arg, line, dict, map) : false;
+    ok = ok ? chose_dir(t, arg, line, dict, map, second_time) : false;
     return ok;
 }
 
@@ -494,11 +502,7 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
     nef = true; /* indica se o arquivo de entrada ja chegou ao fim */
     String w;
 
-    union Type{
-        TypeDir   d;
-        TypeInstr i;
-        TypeArg   a;
-    }t;
+    GenericType t;
 
     rewind(src);
     for(
@@ -524,7 +528,15 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
             print_HashT(dict);
             printf("\n");
         }else if(seems_argument(w)){
-            ok = validate_arg_format(w, &t.a, &instr, line, dict, false);
+            ok = validate_arg_format(
+                w,
+                &t.a,
+                &instr,
+                line,
+                dict,
+                false,
+                false
+            );
         /* Ainda pode ser argumento de diretiva ou instrução */
         }else{
             ok = validate_instr(w, &t.i, line);
@@ -577,7 +589,15 @@ bool second_pass(FILE * src, FILE * out, HashT dict, MemMap map){
         }else if(seems_label(w)){
             ok = validate_label(w, line, dict);
         }else if(seems_argument(w)){
-            ok = validate_arg_format(w, &t.a, &instr, line, dict, true);
+            ok = validate_arg_format(
+                w,
+                &t.a,
+                &instr,
+                line,
+                dict,
+                false,
+                true
+            );
         /* Ainda pode ser argumento de diretiva ou instrução */
         }else{
             ok = validate_instr(w, &t.i, line);

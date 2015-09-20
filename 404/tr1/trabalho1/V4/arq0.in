@@ -1,2 +1,2 @@
-varx:
-LD "varx"
+.word DEZ
+.set DEZ 10

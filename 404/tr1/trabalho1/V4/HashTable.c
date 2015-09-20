@@ -206,7 +206,27 @@ void print_HashT(HashT t){
 			cfprintf(stdout, 93 ,"%s", k);
 			cfprintf(stdout, 96 ,"(%c)", v.t);
 			cfprintf(stdout, 97 ," \"");
-			cfprintf(stdout, 97 ,"%03X[%c]", v.v/2, v.v%2?'d':'e');
+			if(v.t == 'L'){
+				cfprintf(
+					stdout, 99 ,
+					"%03X[%c]",
+					v.v/2,
+					v.v%2?'d':'e'
+				);
+			}else if(v.t == 'S'){
+				cfprintf(
+					stdout, 99 ,
+					"%03d",
+					v.v
+				);
+			}else if(v.t == 'I'){
+				cfprintf(
+					stdout, 99 ,
+					"%02X",
+					v.v
+				);
+			}
+
 			cfprintf(stdout, 97 ,"\"");
 			printf("\n");
 
