@@ -29,6 +29,22 @@ void fprint_MemMap(FILE * out, MemMap m){
 		}
 	}
 }
+MemWord new_MemWord(unsigned int pos, bool is_word){
+	unsigned short int i;
+	MemWord new = malloc(sizeof(sMemWord));
+	new->pos = pos;
+	new->is_word = is_word;
+	if(is_word){
+		new->c.w.w = 0;
+	}else{
+		for(i = 0; i < 2; i++){
+			new->c.i[i].code = 0;
+			new->c.i[i].arg  = 0;
+		}
+	}
+	return new;
+
+}
 bool insert_instr_MemMap(
 	MemMap m,
 	unsigned int code,
@@ -60,11 +76,9 @@ bool insert_instr_MemMap(
 			}
 		}
 	}else{
-		m->m[(m->pos)/2] = malloc(sizeof(sMemWord));
-		m->m[(m->pos)/2]->is_word = false;
+		m->m[(m->pos)/2] = new_MemWord(m->pos/2, false);
 		m->m[(m->pos)/2]->c.i[(m->pos)%2].code = code;
 		m->m[(m->pos)/2]->c.i[(m->pos)%2].arg = arg;
-		m->m[(m->pos)/2]->pos = m->pos/2;
 		m->pos++;
 	}
 
@@ -101,10 +115,8 @@ bool insert_word_MemMap(
 			}
 		}
 	}else{
-		m->m[m->pos/2] = malloc(sizeof(sMemWord));
-		m->m[m->pos/2]->is_word = true;
+		m->m[m->pos/2] = new_MemWord(m->pos/2, true);
 		m->m[m->pos/2]->c.w.w = w;
-		m->m[m->pos/2]->pos = m->pos/2;
 		m->pos += 2;
 	}
 	return true;
@@ -115,10 +127,10 @@ void fprint_ias_format(FILE * out, unsigned long long hex){
 	unsigned short int i, j, k, f[] = {2, 3, 2, 3};
 	sprintf(aux, "%010llX", hex);
 	for(k = 0, i = 0; i < 4; i++){
-		for(j = 0; j < f[i]; j++, k++){
-			fprintf(out, "%c",aux[k]);
-		}
 		fprintf(out, " ");
+		for(j = 0; j < f[i]; j++, k++){
+			fprintf(out, "%c", aux[k]);
+		}
 	}
 	fprintf(out, "\n");
 }
@@ -126,13 +138,13 @@ void fprint_MemWord(FILE * out, MemWord p){
 	if(p == NULL){
 		return;
 	}
-	fprintf(out, "%03X ", p->pos);
+	fprintf(out, "%03X", p->pos);
 	if(p->is_word){
 		fprint_ias_format(out, p->c.w.w);
 	}else{
 		fprintf(
 			out,
-			"%02X %03X %02X %03X\n",
+			" %02X %03X %02X %03X\n",
 			p->c.i[0].code,
 			p->c.i[0].arg,
 			p->c.i[1].code,

@@ -29,7 +29,7 @@ mne[MAX_INSTR] =
     {     "SUB", 0x06 , true  , false },
     {    "SUB|", 0x08 , true  , false },
     {     "MUL", 0x0B , true  , false },
-    {     "DIF", 0x0C , true  , false },
+    {     "DIV", 0x0C , true  , false },
     {     "LSH", 0x14 , false , false },
     {     "RSH", 0x15 , false , false },
     {  "STaddr", 0x12 , true  , true  }
@@ -60,7 +60,7 @@ dir[MAX_DIR] =
     }},
     { WFILL ,"wfill", 2, {
         {{     DEC          }, 1          , 0x3FF      },
-        {{HEX, DEC, ROT, SYM}, -0x80000000, 0x7FFFFFFF }
+        {{HEX, DEC, ROT, SYM}, -4294967296, 0x7FFFFFFF }
     }},
     {  WORD , "word", 1, {
         {{HEX, DEC, ROT, SYM}, 0          , 0x7FFFFFFF }
@@ -111,13 +111,21 @@ bool validate_arg_format(
         aux[j] = str[j];
     }
     *t = 0;
+
     if(aux[0] == '"' && aux[strlen(aux) -1] == '"'){
         *instr = true;
         sscanf(aux, "\"%[^\"]\"", aux);
+        if(aux[strlen(aux) -1] == ':'){
+            stderror(line, "Arguments of instructions do not have ':' in the end\n");
+            ok = false;
+            *instr = false;
+        }
 
     }else{
         *instr = false;
+
     }
+    *t = 0;
     if(aux[0] == '0' && aux[1] == 'x'){
         *t = HEX;
         for(i = 2; aux[i] && ok; i++){
@@ -147,16 +155,28 @@ bool validate_arg_format(
                 ok =  false;
                 break;
         }
+    }else if(aux[strlen(aux) -1] == ':'){
+        if(*t == 0){
+            *t = ROT;
+        }else{
+            stderror(
+                line,
+                "%s cannot be %s and ROT\n",
+                aux,
+                (*t == HEX) ? "HEX" :
+                (*t == DEC) ? "DEC" : "WTF"
+            );
+        }
     }else{
-        if(second_time){
+        if(maybe_sym){
+            *t = SYM;
+        }else if(second_time){
             stderror(
                 line,
                 "Invalid argument: %s\n",
                 aux
             );
-        }
-        if(maybe_sym){
-            *t = SYM;
+            ok = false;
         }else{
             *t = ROT;
         }
@@ -184,7 +204,8 @@ bool interpret_instr(
     bool second_time
 ){
     bool ok, instr = true;
-    unsigned int el, arg;
+    unsigned int el, arg = 0;
+    unsigned short int opcode;
     char c;
     String strarg;
     TypeArg ta;
@@ -196,6 +217,7 @@ bool interpret_instr(
             "Could not identify the instruction\n"
         );
     }
+    opcode = mne[t].opcode;
     if(mne[t].n_arg){
         el = 0;
         ok = true;
@@ -246,15 +268,17 @@ bool interpret_instr(
                 }else if(!char_in_string(c, "LS")){
                     stderror(
                         line,
-                        "Invalid argument: %s\n",
+                        "Invalid instruction argument: %s\n",
                         strarg
                     );
                 }
+            opcode += ((arg % 2) && mne[t].option) ? 1 : 0;
+            arg /= 2;
             }else{
                 if(second_time){
                     stderror(
                         line,
-                        "Invalid argument: %s\n",
+                        "Invalid instruction argument: %s\n",
                         strarg
                     );
                 }
@@ -265,7 +289,8 @@ bool interpret_instr(
     }
     /* Verificar se não há argumentos extras */
     ok = ok ? end_line(src, mne[t].id, line) : false;
-    ok = ok ? insert_instr_MemMap(map, mne[t].opcode, arg, line) : false;
+
+    ok = ok ? insert_instr_MemMap(map, opcode, arg, line) : false;
     return ok;
 }
 
@@ -327,6 +352,9 @@ bool chose_dir(
             break;
 
         case WORD:
+            if(!second_time){
+                arg[0].u = 0;
+            }
             if(m->pos % 2 == 1){
                 stderror(line, "Trying to put a word in the right\n");
                 ok = false;
@@ -338,6 +366,9 @@ bool chose_dir(
             break;
 
         case WFILL:
+            if(!second_time){
+                arg[1].u = 0;
+            }
             if(m->pos % 2 == 1){
                 stderror(line, "Trying to wfill from the right");
             }if(m->pos/2 + arg[0].u >= IAS_MAX_LINE_NUMBER){
@@ -438,7 +469,13 @@ bool interpret_dir(
                     }
                 }
                 else if(ta == ROT || ta == SYM){
+                    if(ta == ROT && strarg[strlen(strarg) - 1] == ':'){
+                        sscanf(strarg, "%[^:]:", strarg); /* Take ':' out */
+                    }
                     if(get_HashT(dict, strarg, &arg[i].u, &c)){
+                        if(c == 'L'){
+                            arg[i].u /= 2;
+                        }
                         if(ta == SYM && c != 'S'){
                             stderror(
                                 line,
@@ -465,7 +502,7 @@ bool interpret_dir(
                             );
                         }
                     }else if(t == SET && i == 0){
-                            strcpy(arg[i].s, strarg);
+                        strcpy(arg[i].s, strarg);
                     }else{
                         if(second_time){
                             stderror(
@@ -474,8 +511,8 @@ bool interpret_dir(
                                 strarg
                             );
                         }
+                        arg[i].u = 0;
                     }
-                    strcpy(arg[i].s, strarg);
                 }
             }
         }
@@ -508,13 +545,13 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
     for(
         nef = true, el = 0, w = NULL;
         ok && nef;
-        w = fgetword(src, &el, &nef), line += el
+        w = ok? fgetword(src, &el, &nef) : NULL, line += el
     ){
         if(!w) {
             continue;
         }
         wpl = (el == 0)? (wpl + 1) : 0;
-        printf("%d: %s\n", wpl+1, w);
+        printf("%d[%d]: %s\n",line, wpl+1, w);/* Debuging1 */
 
         len = strlen(w);
 
@@ -523,10 +560,10 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
             ok = ok ? interpret_dir(src, t.i, line, map, dict, false) : false;
         }else if(seems_label(w)){
             ok = validate_label(w, line, dict);
-            sscanf(w, "%[^:]:", w);
+            sscanf(w, "%[^:]:", w); /* Take ':' out */
             put_HashT(dict, w, map->pos, 'L');
-            print_HashT(dict);
-            printf("\n");
+            print_HashT(dict);/* Debuging0 */
+            printf("\n");/* Debuging0 */
         }else if(seems_argument(w)){
             ok = validate_arg_format(
                 w,
@@ -580,6 +617,7 @@ bool second_pass(FILE * src, FILE * out, HashT dict, MemMap map){
             continue;
         }
         wpl = (el == 0)? (wpl + 1) : 0;
+        printf("%d[%d]: %s\n",line, wpl, w);/* Debuging1 */
 
         len = strlen(w);
 
@@ -617,22 +655,26 @@ bool build(FILE * src, FILE * out) {
     bool ok = true;
     MemMap map = new_MemMap();
     HashT dict = new_HashT();
-    cfprintf(stdout, 92,"Começando Primeira Montagem\n");
+    cfprintf(stdout, 92,"Começando Primeira Montagem\n");/* Debuging0 */
     ok = first_pass(src, out, dict, map);
-    cfprintf(stdout, 92, "Terminada primeira montagem\n");
-    print_HashT(dict);
-    fprint_MemMap(stdout, map);
-    printf("\n");
+    cfprintf(stdout, 92, "Terminada primeira montagem\n");/* Debuging0 */
+    print_HashT(dict);/* Debuging0 */
+    fprint_MemMap(stdout, map);/* Debuging0 */
+    printf("\n");/* Debuging0 */
 
     free_MemMap(&map);
     map = new_MemMap();
-    cfprintf(stdout, 92, "Começando Segunda Montagem\n");
+    cfprintf(stdout, 92, "Começando Segunda Montagem\n");/* Debuging0 */
     ok = ok? second_pass(src, out, dict, map): ok;
-    printf("\n");
-    print_HashT(dict);
-    fprint_MemMap(stdout, map);
-    printf("\n");
-
+    printf("\n");/* Debuging0 */
+    cfprintf(stdout, 92, "Saída do programa\n");/* Debuging0 */
+    if(ok){
+        print_HashT(dict);/* Debuging0 */
+        fprint_MemMap(stdout, map); /* Debuging2 */
+        fprint_MemMap(out, map);
+        printf("\n");/* Debuging0 */
+    }
+    cfprintf(stdout, 92, "Liberando Memória\n");/* Debuging0 */
     free_MemMap(&map);
     free_HashT(&dict);
     return ok;

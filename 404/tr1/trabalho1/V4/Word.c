@@ -56,16 +56,24 @@ String fgetword(FILE * src, unsigned int * lines, bool * ok){
     ){
         /* Verifica se eh comentário */
         if(c == '#'){
+            cfprintf(stdout, 93, "%c", c); /* Debuging5 */
             /* Ignora comentário */
             for(
                 c = fgetc(src);
                 c != EOF && !char_in_string(c, "\n\r");
                 c = fgetc(src)
-            );
+            ){
+                cfprintf(stdout, 96, "%c", c); /* Debuging5 */
+            }
         }
         /* Conta quebras de linha */
-        if(char_in_string(c, "\n\r")){
+        else if(char_in_string(c, "\n\r")){
             (*lines)++;
+            cfprintf(stdout, 94, "[\\%c(%d)]%c", c=='\r'? 'r':'n', *lines, c); /* Debuging5 */
+
+        }
+        else{
+            cfprintf(stdout, 97, "%c", c); /* Debuging5 */
         }
     }
     ungetc(c, src);
