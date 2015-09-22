@@ -205,7 +205,7 @@ bool interpret_instr(
     HashT dict,
     bool second_time
 ){
-    bool ok, instr = true;
+    bool ok = true, instr = true;
     unsigned int el;
     unsigned long long arg = 0;
     unsigned short int opcode;

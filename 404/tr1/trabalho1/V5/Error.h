@@ -47,11 +47,6 @@ typedef struct sException{
 } sException, *Exception;
 
 Exception new_error_exception(String _msg, unsigned short int _line);
-Exception start_error_exception(String _msg);
-Exception new_warning_exception(String _msg, unsigned short int _line);
-Exception start_warning_exception(String _msg);
-
-void set_line_exception(Exception e, unsigned short int line);
 void throw(Exception e);
 
 #endif
