@@ -115,7 +115,7 @@ bool validate_arg_format(
     if(aux[0] == '"' && aux[strlen(aux) -1] == '"'){
         *instr = true;
         /*sscanf(aux, "\"%[^\"]\"", aux);*/
-        aux = extract_Word(aux, "\"%s\"");
+        filter_Word(aux, "\"%s\"");
 
         if(aux[strlen(aux) -1] == ':'){
             stderror(line, "Arguments of instructions do not have ':' in the end\n");
@@ -536,7 +536,7 @@ bool interpret_dir(
 
 
 
-bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
+bool pass(FILE * src, FILE * out, HashT dict, MemMap map, bool first){
     /* Retorno da função */
     bool ok = true;
     unsigned int
@@ -561,19 +561,20 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
             continue;
         }
         wpl = (el == 0)? (wpl + 1) : 1;
-        printf("pos: %03X%c; %d[%d]: %s\n",(map->pos)/2, ((map->pos)%2) ? 'd' : 'e', line, wpl, w);/* Debuging1 */
+        /* printf("pos: %03X%c; %d[%d]: %s\n",(map->pos)/2, ((map->pos)%2) ? 'd' : 'e', line, wpl, w); Debuging1 */
 
         len = strlen(w);
-
         if(seems_directive(w)){
             ok = validate_dir(w, &t.d, line);
-            ok = ok ? interpret_dir(src, t.i, line, map, dict, false) : false;
+            ok = ok ? interpret_dir(src, t.i, line, map, dict, !first) : false;
         }else if(seems_label(w)){
             ok = validate_label(w, line, dict);
-            sscanf(w, "%[^:]:", w); /* Take ':' out */
-            put_HashT(dict, w, map->pos, 'L');
-            print_HashT(dict);/* Debuging0 */
-            printf("\n");/* Debuging0 */
+            if(first){
+                sscanf(w, "%[^:]:", w); /* Take ':' out */
+                put_HashT(dict, w, map->pos, 'L');
+                /*print_HashT(dict);  Debuging0 */
+                /*printf("\n");  Debuging0 */
+            }
         }else if(seems_argument(w)){
             ok = validate_arg_format(
                 w,
@@ -582,82 +583,22 @@ bool first_pass(FILE * src, FILE * out, HashT dict, MemMap map){
                 line,
                 dict,
                 false,
-                false
+                !first
             );
         /* Ainda pode ser argumento de diretiva ou instrução */
         }else{
             ok = validate_instr(w, &t.i, line);
-            ok = ok ? interpret_instr(src, t.i, line, map, dict, false) : false;
+            ok = ok ? interpret_instr(src, t.i, line, map, dict, !first) : false;
             if (ok){
                 m_pos++;
             }
         }
-        free(w);
-    }
-    return ok;
 
-}
-
-
-bool second_pass(FILE * src, FILE * out, HashT dict, MemMap map){
-    /* Retorno da função */
-    bool ok = true;
-    unsigned int
-    m_pos = 0,  /* posição de montagem */
-    line = 1,  /* linha de entrada */
-    len, /* tamanho da string */
-    wpl = 1, /*palavras por linha*/
-    el = 0; /* Conta \n's */
-    bool instr, /* checar se eh uma instrução */
-    nef = false; /* indica se o arquivo de entrada ja chegou ao fim */
-    String w;
-
-    union Type{
-        TypeDir   d;
-        TypeInstr i;
-        TypeArg   a;
-    }t;
-    rewind(src);
-    for(
-        line = 0, ok = true, nef = true, el = 0, w = NULL;
-        ok && nef;
-        w = ok? fgetword(src, &el, &nef) : NULL, line += el
-    ){
-        if(!w) {
-            continue;
-        }
-        wpl = (el == 0)? (wpl + 1) : 1;
-        printf("pos: %d%c; %d[%d]: %s\n",(map->pos)/2, ((map->pos)%2) ? 'd' : 'e', line, wpl, w);/* Debuging1 */
-
-        len = strlen(w);
-
-        if(seems_directive(w)){
-            ok = validate_dir(w, &t.d, line);
-            ok = ok ? interpret_dir(src, t.i, line, map, dict, true) : false;
-        }else if(seems_label(w)){
-            ok = validate_label(w, line, dict);
-        }else if(seems_argument(w)){
-            ok = validate_arg_format(
-                w,
-                &t.a,
-                &instr,
-                line,
-                dict,
-                false,
-                true
-            );
-        /* Ainda pode ser argumento de diretiva ou instrução */
-        }else{
-            ok = validate_instr(w, &t.i, line);
-            ok = ok ? interpret_instr(src, t.i, line, map, dict, true) : false;
-            if (ok){
-                m_pos++;
-            }
-        }
         free(w);
         w = NULL;
     }
     return ok;
+
 }
 
 
@@ -665,26 +606,26 @@ bool build(FILE * src, FILE * out) {
     bool ok = true;
     MemMap map = new_MemMap();
     HashT dict = new_HashT();
-    cfprintf(stdout, 92,"Começando Primeira Montagem\n");/* Debuging0 */
-    ok = first_pass(src, out, dict, map);
-    cfprintf(stdout, 92, "Terminada primeira montagem\n");/* Debuging0 */
-    print_HashT(dict);/* Debuging0 */
-    fprint_MemMap(stdout, map);/* Debuging0 */
-    printf("\n");/* Debuging0 */
+    /*cfprintf(stdout, 92,"Começando Primeira Montagem\n");  Debuging0 */
+    ok = pass(src, out, dict, map, true);
+    /*cfprintf(stdout, 92, "Terminada primeira montagem\n");  Debuging0 */
+    /*print_HashT(dict);  Debuging0 */
+    /*fprint_MemMap(stdout, map);  Debuging0 */
+    /*printf("\n");  Debuging0 */
 
     free_MemMap(&map);
     map = new_MemMap();
-    cfprintf(stdout, 92, "Começando Segunda Montagem\n");/* Debuging0 */
-    ok = ok? second_pass(src, out, dict, map): ok;
-    printf("\n");/* Debuging0 */
-    cfprintf(stdout, 92, "Saída do programa\n");/* Debuging0 */
+    /*cfprintf(stdout, 92, "Começando Segunda Montagem\n");  Debuging0 */
+    ok = ok? pass(src, out, dict, map, false): ok;
+    /*printf("\n");  Debuging0 */
+    /*cfprintf(stdout, 92, "Saída do programa\n");  Debuging0 */
     if(ok){
-        print_HashT(dict);/* Debuging0 */
+        /*print_HashT(dict);  Debuging0 */
         fprint_MemMap(stdout, map); /* Debuging2 */
         fprint_MemMap(out, map);
-        printf("\n");/* Debuging0 */
+        /*printf("\n");  Debuging0 */
     }
-    cfprintf(stdout, 92, "Liberando Memória\n");/* Debuging0 */
+    /*cfprintf(stdout, 92, "Liberando Memória\n");  Debuging0 */
     free_MemMap(&map);
     free_HashT(&dict);
     return ok;

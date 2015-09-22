@@ -1,4 +1,4 @@
-Arqs = main.o HashTable.o Builder.o iasDefs.o Word.o  Error.o
+Arqs = main.o HashTable.o Builder.o iasDefs.o Word.o  Error.o MemMap.o
 
 %.hex: %.in ias-as
 	./ias-as $< $@
@@ -8,6 +8,7 @@ Arqs = main.o HashTable.o Builder.o iasDefs.o Word.o  Error.o
 
 ias-as: $(Arqs)
 	gcc $(Arqs) -o ias-as -std=c99 -pedantic -Wall -Werror -lm
+	rm -f *.o
 
 .PHONY : clean_all clean
 clean_all:

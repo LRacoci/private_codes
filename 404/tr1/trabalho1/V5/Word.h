@@ -8,7 +8,7 @@
 #include "Data.h"
 
 bool char_in_string(char target, String s);
-String extract_Word(String str, const String f);
+bool filter_Word(String src, const String f);
 typedef enum TypeWord{
 	LABEL,
 	DIRECTIVE,

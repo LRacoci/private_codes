@@ -14,11 +14,11 @@ bool char_in_string(char target, String s){
     }
     return false;
 }
-String extract_Word(String src, const String f){
+bool filter_Word(String src, const String f){
     String resp;
     unsigned int i, j, len_resp;
     if(!src){
-        return NULL;
+        return false;
     }
     len_resp = 1;
     for(i = 0; f[i]; i++){
@@ -41,8 +41,9 @@ String extract_Word(String src, const String f){
             i++;
         }
     }
-    free(src);
-    return resp;
+    strcpy(src, resp);
+    free(resp);
+    return true;
 }
 bool element_of(
     String e,

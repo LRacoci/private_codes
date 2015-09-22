@@ -160,36 +160,3 @@ void fprint_MemWord(FILE * out, MemWord p){
 		);
 	}
 }
-
-size_t ___MemWord_size(Info i){
-    return sizeof(sMemWord);
-}
-void ___MemWord_print(Info i){
-	fprint_MemWord(stdout, *(MemWord*)(i));
-}
-void ___MemWord_free(Info *i){
-    free(*(MemWord*)(*i));
-    free(*i);
-    *i = NULL;
-}
-Info ___MemWord_copy(Info i){
-    MemWord* resp;
-    if(!i){
-        return i;
-    }
-    resp = malloc(sizeof(MemWord));
-    *resp = malloc(___MemWord_size(i));
-	**(MemWord*)resp = **(MemWord*)i;
-	if((*(MemWord*)i)->is_word == false){
-		(*(MemWord*)i)->c.i[0] = (*(MemWord*)i)->c.i[0];
-		(*(MemWord*)i)->c.i[1] = (*(MemWord*)i)->c.i[1];
-	}
-    return resp;
-}
-/* Unused */
-Hash ___MemWord_hash(Info i){
-    return 0;
-}
-Comp ___MemWord_comp(Info a, Info b){
-    return numcmp(((MemWord)a)->pos, ((MemWord)b)->pos);
-}
