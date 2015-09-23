@@ -1,0 +1,22 @@
+[0;92mComeçando Primeira Montagem
+pos: 000e; 1[1]: .set
+[0;97m [0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 000e; 2[1]: .word
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+[0;92mTerminada primeira montagem
+000 00 000 00 000
+
+[0;92mComeçando Segunda Montagem
+pos: 000e; 1[1]: .set
+[0;97m [0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 000e; 2[1]: .word
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+
+[0;92mSaída do programa
+[0;94m(21) [0;93mTEMP[0;96m(S)[0;97m "[0;99m005[0;97m"
+
+[0;92mLiberando Memória

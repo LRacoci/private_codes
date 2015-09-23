@@ -1,0 +1,21 @@
+[0;92mComeçando Primeira Montagem
+pos: 000e; 1[1]: .org
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 064e; 2[1]: .org
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 0C8e; 3[1]: .org
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 3FEe; 4[1]: .align
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 400e; 5[1]: .word
+[0;97m [0;94m[\n(1)]
+[0;92mTerminada primeira montagem
+
+[0;92mComeçando Segunda Montagem
+
+[0;92mSaída do programa
+[0;92mLiberando Memória

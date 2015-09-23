@@ -1,0 +1,23 @@
+[0;92mComeçando Primeira Montagem
+pos: 000e; 1[1]: inicio:
+[0;94m(36) [0;93minicio[0;96m(L)[0;97m "[0;99m000[e][0;97m"
+
+[0;97m [0;93m#[0;96m [0;96mt[0;96me[0;96ms[0;96mt[0;96me[0;96m [0;94m[\n(1)]
+pos: 000e; 2[1]: ADD
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+[0;92mTerminada primeira montagem
+[0;94m(36) [0;93minicio[0;96m(L)[0;97m "[0;99m000[e][0;97m"
+000 05 000 00 000
+
+[0;92mComeçando Segunda Montagem
+pos: 000e; 1[1]: inicio:
+[0;97m [0;93m#[0;96m [0;96mt[0;96me[0;96ms[0;96mt[0;96me[0;96m [0;94m[\n(1)]
+pos: 000e; 2[1]: ADD
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+
+[0;92mSaída do programa
+[0;94m(36) [0;93minicio[0;96m(L)[0;97m "[0;99m000[e][0;97m"
+
+[0;92mLiberando Memória
