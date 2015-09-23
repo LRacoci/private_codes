@@ -51,7 +51,7 @@ bool insert_instr_MemMap(
 	unsigned int arg,
 	unsigned int line
  ){
-	
+
 	if(!m) return false;
 	if(!between(0, m->pos, 1023)) return false;
 	if(m->m[(m->pos)/2]){

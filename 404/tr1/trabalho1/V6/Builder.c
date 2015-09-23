@@ -60,7 +60,7 @@ dir[MAX_DIR] =
     }},
     { WFILL ,"wfill", 2, {
         {{     DEC          }, 1          , 0x3FF      },
-        {{HEX, DEC, ROT, SYM}, -4294967296, 0x7FFFFFFF }
+        {{HEX, DEC, ROT, SYM}, -2147483648, 2147483647 }
     }},
     {  WORD , "word", 1, {
         {{HEX, DEC, ROT, SYM}, 0          , 0x7FFFFFFF }
@@ -179,7 +179,7 @@ bool validate_arg_format(
         }else if(second_time){
             stderror(
                 line,
-                "Invalid argument: %s\n",
+                "Unknown argument: %s\n",
                 aux
             );
             ok = false;
@@ -232,7 +232,7 @@ bool interpret_instr(
         el = 0;
         ok = true;
         strarg = fgetword(src, &el ,&ok);
-                if(el > 0 || !ok){
+        if(el > 0 || !ok){
             stderror(
                 line,
                 "Could not get a necessary argument to %s instruction\n",
@@ -249,7 +249,8 @@ bool interpret_instr(
             );
             return false;
         }
-        sscanf(strarg, "\"%[^\"]\"", strarg);
+        filter_Word(strarg, "\"%s\"");
+
         if(ta == DEC){
             sscanf(strarg, "%llu", &arg);
             if(!between(0, arg, MAX_MEM_MAP)){
@@ -327,7 +328,7 @@ bool validate_label(String str, unsigned int line, HashT ht){
 
 bool validate_dir(String str, TypeDir * t, unsigned int line){
     unsigned short int i;
-    sscanf(str, ".%s", str);
+    filter_Word(str, ".%s");
     for(i = 0; i < MAX_DIR && strcmp(str, dir[i].id); i++);
     if(i == MAX_DIR){
         stderror(line, "[.%s] is not a valid directive\n", str);
@@ -380,7 +381,7 @@ bool chose_dir(
                 stderror(line, "Trying to put a word in the right\n");
                 ok = false;
             }else if(m->pos/2 + 1 > IAS_MAX_LINE_NUMBER){
-                stderror(line, "Word overflows the available memory\n");
+                stderror(line, "Trying to insert a word out of memory\n");
                 ok = false;
             }
             ok = ok ? insert_word_MemMap(m, arg[0].llu, line) : false;
@@ -393,7 +394,7 @@ bool chose_dir(
             if(m->pos % 2 == 1){
                 stderror(line, "Trying to wfill from the right");
             }if(m->pos/2 + arg[0].llu > IAS_MAX_LINE_NUMBER){
-                stderror(line, "Wfill overflows the available memory\n");
+                stderror(line, "Wfill need unavailable memory\n");
             }
             for(i = 0; i < arg[0].llu; i++){
                 ok = ok ? insert_word_MemMap(m, arg[1].lld, line) : false;
@@ -492,7 +493,7 @@ bool interpret_dir(
                 }else
                 if(ta == ROT || ta == SYM){
                     if(ta == ROT && strarg[strlen(strarg) - 1] == ':'){
-                        sscanf(strarg, "%[^:]:", strarg); /* Take ':' out */
+                        filter_Word(strarg, "%s:");
                     }
                     if(get_HashT(dict, strarg, &arg[i].llu, &c)){
                         if(c == 'L'){
@@ -529,7 +530,7 @@ bool interpret_dir(
                         if(second_time){
                             stderror(
                                 line,
-                                "Invalid argument: %s\n",
+                                "Unknown argument: %s\n",
                                 strarg
                             );
                         }
@@ -555,11 +556,11 @@ bool pass(FILE * src, FILE * out, HashT dict, MemMap map, bool first){
     m_pos = 0,  /* posição de montagem */
     line = 1,  /* linha de entrada */
     len, /* tamanho da string */
-    wpl = 1, /*palavras por linha*/
+    wpl = 0, /*palavras por linha*/
     el = 0; /* Conta \n's */
     bool
     instr,
-    label = false,
+    label = false, /*  */
     nef = true; /* indica se o arquivo de entrada ja chegou ao fim */
     String w;
 
@@ -574,11 +575,12 @@ bool pass(FILE * src, FILE * out, HashT dict, MemMap map, bool first){
             continue;
         }
         if(el != 0){
-            wpl = 1;
+            wpl = 0;
             label = false;
         }
+        wpl++;
 
-        printf("pos: %03X%c; %d[%d]: %s\n",(map->pos)/2, ((map->pos)%2) ? 'd' : 'e', line, wpl, w); /* Debuging0 */
+        printf("pos: %03X%c; %d[%d]: %s\n",(map->pos)/2, ((map->pos)%2) ? 'd' : 'e', line, wpl, w);/* Debuging0 */
 
 
         len = strlen(w);
@@ -594,18 +596,19 @@ bool pass(FILE * src, FILE * out, HashT dict, MemMap map, bool first){
                 label = true;
             }
             if(first){
-                sscanf(w, "%[^:]:", w); /* Take ':' out */
+                filter_Word(w, "%s:");
                 if(is_in_HashT(dict, w, NULL)){
                     stderror(line, "\"%s\" already declared\n", w);
                     ok = false;
                 }
                 if(ok){
                     put_HashT(dict, w, map->pos, 'L');
-                    print_HashT(dict); /* Debuging0 */
-                    printf("\n"); /* Debuging0 */
+                    print_HashT(dict);/* Debuging0 */
+                    printf("\n");/* Debuging0 */
                 }
             }
         }else if(seems_argument(w)){
+
             ok = validate_arg_format(
                 w,
                 &t.a,
@@ -625,7 +628,7 @@ bool pass(FILE * src, FILE * out, HashT dict, MemMap map, bool first){
             stderror(line, "%s is not a valid mnemonic\n", w);
             ok = false;
         }
-        fprint_MemMap(stdout, map); /* Debuging0 */
+        /* fprint_MemMap(stdout, map);  Debuging2 */
 
         free(w);
         w = NULL;
@@ -639,26 +642,26 @@ bool build(FILE * src, FILE * out) {
     bool ok = true;
     MemMap map = new_MemMap();
     HashT dict = new_HashT();
-    cfprintf(stdout, 92,"Começando Primeira Montagem\n"); /* Debuging0 */
+    cfprintf(stdout, 92,"Começando Primeira Montagem\n");/* Debuging0 */
     ok = pass(src, out, dict, map, true);
-    cfprintf(stdout, 92, "Terminada primeira montagem\n"); /* Debuging0 */
-    print_HashT(dict); /* Debuging0 */
-    fprint_MemMap(stdout, map); /* Debuging0 */
-    printf("\n"); /* Debuging0 */
+    cfprintf(stdout, 92, "Terminada primeira montagem\n");/* Debuging0 */
+    print_HashT(dict);/* Debuging0 */
+    fprint_MemMap(stdout, map);/* Debuging0 */
+    printf("\n");/* Debuging0 */
 
     free_MemMap(&map);
     map = new_MemMap();
-    cfprintf(stdout, 92, "Começando Segunda Montagem\n"); /* Debuging0 */
+    cfprintf(stdout, 92, "Começando Segunda Montagem\n");/* Debuging0 */
     ok = ok? pass(src, out, dict, map, false): ok;
-    printf("\n"); /* Debuging0 */
-    cfprintf(stdout, 92, "Saída do programa\n"); /* Debuging0 */
+    printf("\n");/* Debuging0 */
+    cfprintf(stdout, 92, "Saída do programa\n");/* Debuging0 */
     if(ok){
-        print_HashT(dict); /* Debuging0 */
-        fprint_MemMap(stdout, map); /* Debuging2 */
+        print_HashT(dict);/* Debuging0 */
+        /* fprint_MemMap(stdout, map);  Debuging1 */
         fprint_MemMap(out, map);
-        printf("\n"); /* Debuging0 */
+        printf("\n");/* Debuging0 */
     }
-    cfprintf(stdout, 92, "Liberando Memória\n"); /* Debuging0 */
+    cfprintf(stdout, 92, "Liberando Memória\n");/* Debuging0 */
     free_MemMap(&map);
     free_HashT(&dict);
     return ok;

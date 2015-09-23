@@ -73,6 +73,9 @@ bool ungetword(FILE * src, String str){
     }
     return true;
 }
+
+/* Le a proxima palavra do arquivo de entrada e retorna o
+ * numero de quebras de linha em lines */
 String fgetword(FILE * src, unsigned int * lines, bool * ok){
     String resp;
     unsigned int tam = 0;
@@ -99,10 +102,11 @@ String fgetword(FILE * src, unsigned int * lines, bool * ok){
             }
         }
         /* Conta quebras de linha */
-        else if(char_in_string(c, "\n\r")){
-            (*lines)++;
-            cfprintf(stdout, 94, "[\\%c(%d)]%c", c=='\r'? 'r':'n', *lines, c); /* Debuging5 */
-
+        if(char_in_string(c, "\n")){
+            if(lines){
+                (*lines)++;
+                cfprintf(stdout, 94, "[\\%c(%d)]%c", c=='\r'? 'r':'n', *lines, c); /* Debuging5 */
+            }
         }
         else{
             cfprintf(stdout, 97, "%c", c); /* Debuging5 */
@@ -119,7 +123,9 @@ String fgetword(FILE * src, unsigned int * lines, bool * ok){
     );
     /* Caso o arquivo já esteja no final, nada é alocado */
     if(tam == 0){
-        *lines = -1;
+        if(lines){
+            *lines = -1;
+        }
         *ok = false;
         return NULL;
     }
