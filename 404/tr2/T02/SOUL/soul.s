@@ -38,135 +38,126 @@ interrupt_vector:
 
 RESET_HANDLER:
 
-    @Set interrupt table base address on coprocessor 15.
+    @ Set interrupt table base address on coprocessor 15.
     ldr r0, =interrupt_vector
     mcr p15, 0, r0, c12, c0, 0
 
-initialize_stacks:
+	initialize_stacks:
 
-	msr CPSR_c, IRQ_MODE_I_1_F_1 	@ IRQ mode, interuptions disnabled
-	ldr sp, =STACK_IRQ_BASE			@ Initialize sp_IRQ
+		msr CPSR_c, IRQ_MODE_I_1_F_1 	@ IRQ mode, interrupcoes desabilitadas
+		ldr sp, =STACK_IRQ_BASE			@ Inicializa pilha sp_IRQ
 
-	msr CPSR_c, SYS_MODE_I_1_F_1 	@ SYS mode, interuptions disnabled
-	ldr sp, =STACK_SYS_BASE			@ Initialize sp_SYS
+		msr CPSR_c, SYS_MODE_I_1_F_1 	@ SYS mode, interrupcoes desabilitadas
+		ldr sp, =STACK_SYS_BASE			@ Inicializa pilha sp_SYS
 
-	mov r0, #SVC_MODE_I_1_F_1		@ Read the SVC_MODE_I_1_F_1 mask with 
-@											Interuption Flags Disabled
+		msr CPSR_c, SVC_MODE_I_1_F_1 	@ SVC mode, interrupcoes desabilitadas
+		ldr sp, =STACK_SVC_BASE			@ Inicializa pilha sp_SVC
 
-	bic r0, #0b11000000				@ Enable interuptions I=0; F=0;
-	msr CPSR_c, r0 					@ SVC mode, interuptions enabled
-	ldr sp, =STACK_SVC_BASE			@ Initialize sp_SVC
+	set_gpt:
+		@ Constantes para os enderecos do GPT
+		.set GPT_BASE, 			0x53FA0000
+		.set GPT_CR, 			0x0
+		.set GPT_PR, 			0x4
+		.set GPT_SR,			0x8
+		.set GPT_OCR1,			0x10
+		.set GPT_IR,			0xC
 
-set_gpt:
-	@ Constantes para os enderecos do GPT
-	.set GPT_BASE, 			0x53FA0000
-	.set GPT_CR, 			0x0
-	.set GPT_PR, 			0x4
-	.set GPT_SR,			0x8
-	.set GPT_OCR1,			0x10
-	.set GPT_IR,			0xC
+		
+		@ Carrega a base do GPT
+		ldr r1, =GPT_BASE
 
-	
-	@ Carrega a base do GPT
-	ldr r1, =GPT_BASE
+		@ Habilitar e configurar o clock_src para periférico
+		ldr r0, =0x41
+		str	r0, [r1, #GPT_CR]
 
-	@ Habilitar e configurar o clock_src para periférico
-	ldr r0, =0x41
-	str	r0, [r1, #GPT_CR]
+		@ Zerar o prescaler (GPT_PR)
+		ldr r0, =0x0
+		str	r0, [r1, #GPT_PR]
 
-	@ Zerar o prescaler (GPT_PR)
-	ldr r0, =0x0
-	str	r0, [r1, #GPT_PR]
-	@ 	Colocar em GPT_COR1 o valor que gera 
-	@ a interrupção durante a contagem
-	ldr r0, =100
-	str	r0, [r1, #GPT_OCR1]
-	@ Habilitar a interrupção Output Compare Channel 1
-	ldr r0, =0b1
-	str	r0, [r1, #GPT_IR]
+		@ Colocar em GPT_COR1 o valor que gera 
+		@ a interrupção durante a contagem
+		ldr r0, =100
+		str	r0, [r1, #GPT_OCR1]
 
-set_tzic:
-	@ Constantes para os enderecos do TZIC
-	.set TZIC_BASE,             0x0FFFC000
-	.set TZIC_INTCTRL,          0x0
-	.set TZIC_INTSEC1,          0x84 
-	.set TZIC_ENSET1,           0x104
-	.set TZIC_PRIOMASK,         0xC
-	.set TZIC_PRIORITY9,        0x424
+		@ Habilitar a interrupção Output Compare Channel 1
+		ldr r0, =0b1
+		str	r0, [r1, #GPT_IR]
 
-	@ Liga o controlador de interrupcoes
-	@ R1 <= TZIC_BASE
+	set_tzic:
+		@ Constantes para os enderecos do TZIC
+		.set TZIC_BASE,             0x0FFFC000
+		.set TZIC_INTCTRL,          0x0
+		.set TZIC_INTSEC1,          0x84 
+		.set TZIC_ENSET1,           0x104
+		.set TZIC_PRIOMASK,         0xC
+		.set TZIC_PRIORITY9,        0x424
 
-	ldr	r1, =TZIC_BASE
+		@ Liga o controlador de interrupcoes
+		@ R1 <= TZIC_BASE
 
-	@ Configura interrupcao 39 do GPT como nao segura
-	mov	r0, #(1 << 7)
-	str	r0, [r1, #TZIC_INTSEC1]
+		ldr	r1, =TZIC_BASE
 
-	@ Habilita interrupcao 39 (GPT)
-	@ reg1 bit 7 (gpt)
+		@ Configura interrupcao 39 do GPT como nao segura
+		mov	r0, #(1 << 7)
+		str	r0, [r1, #TZIC_INTSEC1]
 
-	mov	r0, #(1 << 7)
-	str	r0, [r1, #TZIC_ENSET1]
+		@ Habilita interrupcao 39 (GPT)
+		@ reg1 bit 7 (gpt)
 
-	@ Configure interrupt39 priority as 1
-	@ reg9, byte 3
+		mov	r0, #(1 << 7)
+		str	r0, [r1, #TZIC_ENSET1]
 
-	ldr r0, [r1, #TZIC_PRIORITY9]
-	bic r0, r0, #0xFF000000
-	mov r2, #1
-	orr r0, r0, r2, lsl #24
-	str r0, [r1, #TZIC_PRIORITY9]
+		@ Configure interrupt39 priority as 1
+		@ reg9, byte 3
 
-	@ Configure PRIOMASK as 0
-	eor r0, r0, r0
-	str r0, [r1, #TZIC_PRIOMASK]
+		ldr r0, [r1, #TZIC_PRIORITY9]
+		bic r0, r0, #0xFF000000
+		mov r2, #1
+		orr r0, r0, r2, lsl #24
+		str r0, [r1, #TZIC_PRIORITY9]
 
-	@ Habilita o controlador de interrupcoes
-	mov	r0, #1
-	str	r0, [r1, #TZIC_INTCTRL]
+		@ Configure PRIOMASK as 0
+		eor r0, r0, r0
+		str r0, [r1, #TZIC_PRIOMASK]
 
-	@instrucao msr - habilita interrupcoes
-	msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
+		@ Habilita o controlador de interrupcoes
+		mov	r0, #1
+		str	r0, [r1, #TZIC_INTCTRL]
 
-set_gpio:
-	@ Constantes para os enderecos do GPIO
-	.set GPIO_BASE, 			0x53F84000
-	.set GPIO_DR,				0x0
-	.set GPIO_GDIR, 			0x4
-	.set GPIO_PSR, 				0x8
+	set_gpio:
+		@ Constantes para os enderecos do GPIO
+		.set GPIO_BASE, 			0x53F84000
+		.set GPIO_DR,				0x0
+		.set GPIO_GDIR, 			0x4
+		.set GPIO_PSR, 				0x8
 
+		ldr	r1, =GPIO_BASE
 
-	ldr	r1, =GPIO_BASE
+		@ Configurar entradas e saídas da GPIO
+		ldr r0, =0xFFFC003E @ 1 = Saída 0 = Entrada
+		str	r0, [r1, #GPIO_GDIR]
 
-	@ Configurar entradas e saídas da GPIO
-	ldr r0, =0xFFFC003E @ 1 = Saída 0 = Entrada
-	str	r0, [r1, #GPIO_GDIR]
-	@ Zera as entradas do GPIO_DR
-	ldr r2, [r1, #GPIO_DR]
-	and r0, r2, r0 
-	str	r0, [r1, #GPIO_DR]
+		@ Zera as entradas do GPIO_DR
+		ldr r2, [r1, #GPIO_DR]
+		and r0, r2, r0 
+		str	r0, [r1, #GPIO_DR]
 
 
-@ Tentativa de mudar para o modo usuário
-CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
+	@ Tentativa de mudar para o modo usuário
+	CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
 
-	ldr r1, =USER_START_POSITION
-	mov r0, #USR_MODE_I_1_F_1		@ Read the USR_MODE_I_1_F_1 mask with 
-@											Interuption Flags Disabled
-
-	bic r0, #0b11000000				@ Enable interuptions I=0; F=0;
-	msr CPSR_c, r0 					@ USR mode, interuptions enabled
-	mov pc, r1						@ Jump to user start position
-
-
+		ldr r1, =USER_START_POSITION
+		mov r0, #USR_MODE_I_1_F_1		@ Le a mascara USR_MODE_I_1_F_1 com 
+										@ Flags de interrupcao desabilitadas
+		bic r0, #0b11000000				@ Abilita interrupcoes na mascara I=0; F=0;
+		msr CPSR_c, r0 					@ USR mode, interrupcoes abilitadas
+		mov pc, r1						@ Pula para a posicao de inicio do usuario
 
 IRQ_HANDLER:
-		stmfd sp!, {r0, r2}
-	@ Habilitar/Desabilitar interupcoes
+	stmfd sp!, {r0, r2}
+	@ Habilitar/Desabilitar interrupcoes
 
-
-	@ 	Informa ao GPT que o  processador 
+	@ Informa ao GPT que o  processador 
 	@ já está ciente de que ocorreu a interrupção
 	ldr r2, =GPT_BASE
 	mov r0, #0x1
@@ -175,28 +166,30 @@ IRQ_HANDLER:
 
 	@ Le o endereço do contador
 	ldr r2, =system_time
+
 	@ Carega o contador
 	ldr r0, [r2]
+
 	@ Incrementa o contador
 	add r0, r0, #1
+
 	@ Grava de volta o contador incrementado
-	str r0,[r2]
-		
-		
-		ldmfd sp!, {r0, r2}
-		@ Ajusta o lr antes de retornar
-		sub 	lr, lr, #4
-		movs 	pc, lr
+	str r0, [r2]
+	
+	ldmfd sp!, {r0, r2}
+	@ Ajusta o lr antes de retornar
+	sub 	lr, lr, #4
+	movs 	pc, lr
 
 SVC_HANDLER:
-		stmfd sp!, {r1-r12, lr}
-	@ Habilitar/Desabilitar interupcoes
-
+	stmfd sp!, {r1-r12, lr}
+	@ Habilitar/Desabilitar interrupcoes
 
 	sub r7, r7, #16
 	ldr lr, =end_svc_handler
 	add pc, pc, r7, lsl #2
-	@	 Apesar de parecer inútil esse comando 
+
+	@ Apesar de parecer inútil, esse comando 
 	@ é necessário para o salto na intstrução 
 	@ anterior dar certo
 	mov r0, r0 
@@ -215,16 +208,17 @@ SVC_HANDLER:
 
 
 
-read_sonar:						@ 	(r0) : unsigned char 	sonar_id, 
-@									(r1) : unsigned short* 	dist
+read_sonar:						@ (r0) : unsigned char 	sonar_id, 
+								@ (r1) : unsigned short* 	dist
 
-		stmfd sp!, {r4-r12, lr}
+	stmfd sp!, {r4-r12, lr}
 
 	@ Conferir se os argumentos são válidos
 	cmp r0, #0b1111
 	movhi r0, #0
 	subhi r0, r0, #1
 	bhi end_read_sonar
+
 	@ Corpo da funcao
 
 	@ SONAR_MUX <= sonar_id (r0)
@@ -252,19 +246,24 @@ read_sonar:						@ 	(r0) : unsigned char 	sonar_id,
 		ldmfd sp!, {r4-r12, pc}
 
 
-register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id, 
-@									(r1) : unsigned short 	dist_threshold, 
-@									(r2) : void (*f)()
-		stmfd sp!, {r4-r12, lr}
+register_proximity_callback :	@ (r0) : unsigned char 	sensor_id, 
+								@ (r1) : unsigned short 	dist_threshold, 
+								@ (r2) : void (*f)()
+	stmfd sp!, {r4-r12, lr}
 	
 	@ Conferir se os argumentos são válidos
+	@ Carregas o valor maximo de Callbacks e os ativos
 	ldr r4, =MAX_CALLBACKS
 	ldr r5, =active_callbacks
 	ldr r3, [r5]
+
+	@ Compara para ver se esta no maximo e retorna caso for verdade
 	cmp r3, r4
 	movhs r0, #0
 	subhs r0, r0, #1
 	bhs end_register_proximity_callback
+
+	@ Checa se o identificador do sonar e valido
 	cmp r0, #0b1111
 	movhi r0, #0
 	subhi r0, r0, #2
@@ -285,16 +284,21 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 		ldmfd sp!, {r4-r12, pc}
 
 
-set_motor_speed :				@ 	(r0) : unsigned char 	id, 
-@									(r1) : unsigned char 	speed
+set_motor_speed :				@ (r0) : unsigned char 	id, 
+								@ (r1) : unsigned char 	speed
 
-		stmfd sp!, {r4-r12, lr}
+	stmfd sp!, {r4-r12, lr}
 	
 	@ Conferir se os argumentos são válidos
+	@ Checa se o identificador do sonar e valido
+	@ e retorna caso contrario
 	cmp r0, #0b1
 	movhi r0, #0
 	subhi r0, r0, #1
 	bhi end_set_motor_speed
+
+	@ Checa se a velocidade e valida, ou seja,
+	@ possui valor no maximo ate o bit 6
 	cmp r1, #0b111111
 	movhi r0, #0
 	subhi r0, r0, #2
@@ -323,9 +327,9 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 		ldmfd sp!, {r4-r12, pc}
 
 
-set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0, 
-@									(r1) : unsigned char 	spd_m1
-		stmfd sp!, {r4-r12, lr}
+set_motors_speed:				@ (r0) : unsigned char 	spd_m0, 
+								@ (r1) : unsigned char 	spd_m1
+	stmfd sp!, {r4-r12, lr}
 
 	@ Conferir se os argumentos são válidos
 	cmp r0, #0b111111
@@ -360,26 +364,26 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 
 get_time:						@ 	Nao tem parametros
 
-		stmfd sp!, {r4-r12, lr}
+	stmfd sp!, {r4-r12, lr}
 
 	ldr r0, =system_time
 	ldr r0, [r0]
 
-		ldmfd sp!, {r4-r12, pc}
+	ldmfd sp!, {r4-r12, pc}
 
 
 set_time:						@ 	(r0) : unsigned int 	t
-		stmfd sp!, {r4-r12, lr}
+	stmfd sp!, {r4-r12, lr}
 
 	ldr r1, =system_time
 	str r0, [r1]
 
-		ldmfd sp!, {r4-r12, pc}
+	ldmfd sp!, {r4-r12, pc}
 
 
-set_alarm:						@	(r0) : void (*f)(), 
-@									(r1) : unsigned int time
-		stmfd sp!, {r4-r12, lr}
+set_alarm:						@ (r0) : void (*f)(), 
+								@ (r1) : unsigned int time
+	stmfd sp!, {r4-r12, lr}
 
 	@ Conferir se os argumentos são válidos
 	ldr r2, =MAX_ALARMS
@@ -395,7 +399,8 @@ set_alarm:						@	(r0) : void (*f)(),
 	movlo r0, #0
 	sublo r0, r0, #2
 	blo end_set_alarm
-@ Corpo da funcao
+	
+	@ Corpo da funcao
 	@ Incremento contador de alarmes
 	add r3, r3, #1
 	@ Grava de volta o contador incrementado
