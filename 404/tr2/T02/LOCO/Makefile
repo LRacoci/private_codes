@@ -45,8 +45,12 @@ clean:
 
 
 # Roda o programa com o simulador ARM
+run_flags: disk.img
+	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img --debug=core,bus,gpt,tzic,uart,ram,rom,cp15,mmu,sd,esdhc,dpllc,ccm
+
 run: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img
+
 
 # Roda com suporte ao gdb
 gdb: disk.img

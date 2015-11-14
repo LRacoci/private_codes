@@ -27,19 +27,19 @@ set_motor_speed: 					@ 	(r0) : unsigned char 	id,
 	mov 	r0, 	r3
 
 
-	cmp 	r1, 	#0				@ Compare if the id argument is 0
+	cmp 	r1, 	#0				@ Compara se o argumento eh 0
 
 	bne 	end_if_1
-	moveq 	r7, 	#126			@ Indentify the syscall 
-	@									 to set the speed of motor 1
+	moveq 	r7, 	#126			@ Identifica a syscall 
+	@									 para setar a velocidade do motor 0
 	svc 	0x0
 
 	end_if_1:
 
-	cmp 	r1, 	#1				@ Compare if the id argument is 1
+	cmp 	r1, 	#1				@ Compara se o argumento eh 1
 	bne 	end_if_2
-	mov 	r7, 	#127 			@ Indentify the syscall 
-	@									 to set the speed of motor 1
+	mov 	r7, 	#127 			@ Identifica a syscall 
+	@									 para setar a velocidade do motor 1
 	svc 	0x0
 
 	end_if_2:
@@ -62,16 +62,18 @@ read_sonar: 						@ 	(r0) : unsigned char 	sonar_id,
 @										(r1) : unsigned short* 	dist
 
 
-		stmfd sp!, {r4, r7, lr}		@ Salva os registradores callee-save 
+		stmfd sp!, {r7, lr}			@ Salva os registradores callee-save 
 @										e o endereço de retorno
-	mov 	r4, 	r1				@ Salva dist em um registrador callee-save
-	mov 	r7, 	#125
-	svc 	0x0
-	cmp 	r4, 	#0				@ Compara se o endereco passado por parametro 
-@										eh valido [nao eh o zero (NULL)]
-	strne 	r0, 	[r4]			@ Se for, Grava o retorno da sys-call em dist
 
-		ldmfd sp!, {r4, r7, pc} 	@ Restaura os registradores e retorna
+	mov 	r7, 	#125			@ Identifica a syscall 
+		stmfd sp!, {r1}	
+	svc 	0x0
+		ldmfd sp!, {r1} 
+	cmp 	r5, 	#0x0			@ Compara se o endereco passado por parametro 
+@										eh valido [nao eh o zero (NULL)]
+	strne 	r0, 	[r1]			@ Se for, Grava o retorno da sys-call em dist
+
+		ldmfd sp!, {r7, pc} 		@ Restaura os registradores e retorna
 
 
 read_sonars: 						@ (r0) : unsigned int* 	distances

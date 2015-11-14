@@ -30,6 +30,8 @@ void get_mins_reading_all(unsigned short * l, unsigned short * r);
 
 void stop();
 
+void test_all_movements(unsigned char vel);
+
 
 void swerve(unsigned short s3, unsigned short s4);
 
@@ -37,34 +39,11 @@ void folow_wall();
 
 /* Função principal */
 void _start(void) {
-	stop();
+	go_front(VEL);
 	/* Loop principal */
 	do{
-		go_front(VEL);
-		delay();
-		turn_left(VEL);
-		delay();
-		stop();
-		delay();
-		turn_right(VEL);
-		delay();
-		stop();
-		delay();
-		turn_left(VEL);
-		delay();
-		turn_right(VEL);
-		delay();
-		turn_left(VEL);
-		delay();
-		turn_right(VEL);
-		delay();
-		go_front(VEL);
-		delay();
-		stop();
-		delay();
-		go_front(VEL);
-		delay();
-
+		test_all_movements(VEL);
+		folow_wall();
 	}while(1);
 	
 }
@@ -82,7 +61,7 @@ void folow_wall(){
 	read_sonar(4, &s4);
 	if(s3 < LIMITE || s4 < LIMITE){
 		swerve(s3, s4);
-	}
+	}else
 	if(s0 < AVG_LIMITE_PAREDE - STDEV_LIMITE_PAREDE){
 		turn_left(TURN_VEL);
 	}else if(
@@ -97,42 +76,33 @@ void folow_wall(){
 }
 /* Função para desviar de algum obstáculo */
 void swerve(unsigned short s3, unsigned short s4){
-		/* Le os dois sonares frontais */
-		read_sonar(3, &s3);
-		read_sonar(4, &s4);
-		/* Verifica se há perigo */
-		if(s3 < LIMITE || s4 < LIMITE){
-			/* Para, antes de mais nada */
-			stop();	
-			/* Tenta desviar do obstáculo */
-			/* Recebe o mínimo de ambos os lados */
-			/* Pode ser usado com essa função ou com a get_mins_reading_all
-			 * que é mais lenta pois le todos os sonares */
-			get_mins(&s3, &s4);
-			/* Compara os dois mínimos */
-			if(s3<s4){
-				/* Vira pra direita até sair de perigo */
-				do{
-					turn_right(TURN_VEL);
-					/* Atualiza os sonares frontais */
-					read_sonar(3, &s3);
-					read_sonar(4, &s4);
-				}while(s3 < LIMITE || s4 < LIMITE);
-				stop();
-			}
-			else{
-				/* Vira pra esquerda até sair de perigo */
-				do{
-					turn_left(TURN_VEL);
-					/* Atualiza os sonares frontais */
-					read_sonar(3, &s3);
-					read_sonar(4, &s4);
-				}while(s3 < LIMITE || s4 < LIMITE);
-				stop();
-			}
-		}else{
-			/* Caso nao haja perigo, segue em frente */
-			go_front(VEL);
+		/* Para, antes de mais nada */
+		stop();	
+		/* Tenta desviar do obstáculo */
+		/* Recebe o mínimo de ambos os lados */
+		/* Pode ser usado com essa função ou com a get_mins_reading_all
+		 * que é mais lenta pois le todos os sonares */
+		get_mins(&s3, &s4);
+		/* Compara os dois mínimos */
+		if(s3<s4){
+			/* Vira pra direita até sair de perigo */
+			do{
+				turn_right(TURN_VEL);
+				/* Atualiza os sonares frontais */
+				read_sonar(3, &s3);
+				read_sonar(4, &s4);
+			}while(s3 < LIMITE || s4 < LIMITE);
+			stop();
+		}
+		else{
+			/* Vira pra esquerda até sair de perigo */
+			do{
+				turn_left(TURN_VEL);
+				/* Atualiza os sonares frontais */
+				read_sonar(3, &s3);
+				read_sonar(4, &s4);
+			}while(s3 < LIMITE || s4 < LIMITE);
+			stop();
 		}
 }
 /* Percorre os sonares frontais procurando o mínimo de ambos 
@@ -160,7 +130,7 @@ void get_mins(unsigned short * l, unsigned short * r){
 void get_mins_reading_all(unsigned short * l, unsigned short * r){
 	unsigned char i;
 	unsigned int s[16];
-	/* Read all the sonarsread_sonars(s, & *);
+	read_sonars(s);
 	/* Get the minimum of the set {s0-s3} */
 	for (i = 0; i <= 3; i++){
 		(*l) = s[i] < (*l) ? s[i] : (*l);	
@@ -213,8 +183,37 @@ void turn_right(unsigned char vel){
 	}
 	estate = R;
 }
+
 /* Função para parar */
 void stop(){
 	set_motors_speed(0, 0);
 	estate = S;
 }
+
+void test_all_movements(unsigned char vel){
+	go_front(VEL);
+	delay();
+	turn_left(VEL);
+	delay();
+	stop();
+	delay();
+	turn_right(VEL);
+	delay();
+	stop();
+	delay();
+	turn_left(VEL);
+	delay();
+	turn_right(VEL);
+	delay();
+	turn_left(VEL);
+	delay();
+	turn_right(VEL);
+	delay();
+	go_front(VEL);
+	delay();
+	stop();
+	delay();
+	go_front(VEL);
+	delay();
+}
+
