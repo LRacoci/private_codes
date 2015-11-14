@@ -34,6 +34,9 @@ all: disk.img
 
 # ----------------------------------
 # Specific Rules
+SOUL.x: $(SOUL_OBJS)
+	$(LD) $^ -o $@ $(LD_FLAGS) --section-start=.iv=0x778005e0 -Ttext=0x77800700 -Tdata=0x77801800 -e 0x778005e0
+
 LOCO.x: loco.o bico.o
 	$(LD) $^ -o $@ $(LD_FLAGS) -Ttext=0x77802000
 
