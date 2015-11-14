@@ -3,8 +3,8 @@
 #define LIMITE 1024
 #define AVG_LIMITE_PAREDE 512
 #define STDEV_LIMITE_PAREDE 256
-#define TURN_VEL 5
-#define VEL 15
+#define TURN_VEL 2
+#define VEL 5
 
 #define ABSOLUTE(x) ((x) > 0) ? (x): (-(x))
 /* Define o estado do robo */
@@ -37,12 +37,15 @@ void swerve(unsigned short s3, unsigned short s4);
 
 void folow_wall();
 
+void search_wall();
+
 /* Função principal */
 void _start(void) {
 	go_front(VEL);
 	/* Loop principal */
 	do{
-		test_all_movements(VEL);
+		/*test_all_movements(VEL);*/
+		search_wall();
 		folow_wall();
 	}while(1);
 	
@@ -52,10 +55,19 @@ void delay()
 {
 	int i;
 	/* Not the best way to delay */
-	for(i = 0; i < 10000; i++ );  
+	for(i = 0; i < 1000000; i++ );  
+}
+void search_wall(){
+	unsigned short s3, s4;
+	go_front(VEL);
+	do{
+		read_sonar(3, &s3);
+		read_sonar(4, &s4);
+	}while(s3 >= LIMITE && s4 >= LIMITE);
+	stop();
 }
 void folow_wall(){
-	unsigned short, ds0;
+	unsigned short s0, ds0;
 	ds0 = s0;
 	read_sonar(0, &s0);
 	
