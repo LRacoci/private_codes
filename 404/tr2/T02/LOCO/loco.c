@@ -55,13 +55,11 @@ void delay()
 	for(i = 0; i < 10000; i++ );  
 }
 void folow_wall(){
-	unsigned short s0, s3, s4;
+	unsigned short, ds0;
+	ds0 = s0;
 	read_sonar(0, &s0);
-	read_sonar(3, &s3);
-	read_sonar(4, &s4);
-	if(s3 < LIMITE || s4 < LIMITE){
-		swerve(s3, s4);
-	}else
+	
+
 	if(s0 < AVG_LIMITE_PAREDE - STDEV_LIMITE_PAREDE){
 		turn_left(TURN_VEL);
 	}else if(
