@@ -150,8 +150,13 @@ set_gpio:
 @ Tentativa de mudar para o modo usuário
 CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
 
-	msr CPSR_c, #0x10			@ USR mode, interuptions enabled
-	ldr pc, =0x77802000			@ Jump to user start position
+	ldr r1, =USER_START_POSITION
+	mov r0, #USR_MODE_I_1_F_1		@ Read the USR_MODE_I_1_F_1 mask with 
+@											Interuption Flags Disabled
+
+	bic r0, #0b11000000				@ Enable interuptions I=0; F=0;
+	msr CPSR_c, r0 					@ USR mode, interuptions enabled
+	mov pc, r1						@ Jump to user start position
 
 
 
@@ -166,7 +171,14 @@ IRQ_HANDLER:
 	str r0, [r2, #GPT_SR]
 
 
-
+	@ Le o endereço do contador
+	ldr r2, =system_time
+	@ Carega o contador
+	ldr r0, [r2]
+	add r0, r0, #1
+	@ Grava de volta o contador incrementado
+	str r0,[r2]
+		
 		
 		ldmfd sp!, {r0, r2}
 		@ Ajusta o lr antes de retornar
@@ -254,7 +266,8 @@ set_alarm:
 
 
 .data
-
+system_time:
+.word 0x0
 @ Declaração das Stacks
 
 .set DEFAULT_STACK_SIZE, 	0x100

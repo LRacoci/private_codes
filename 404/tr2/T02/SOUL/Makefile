@@ -55,7 +55,7 @@ run: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img
 
 run_gdb: disk.img
-	arm-sim --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,uart,ram,rom,cp15,sd
+	arm-sim --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,cp15,sd
 
 # Roda com suporte ao gdb
 gdb: disk.img
