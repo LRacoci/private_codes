@@ -44,8 +44,17 @@ RESET_HANDLER:
 
 initialize_stacks:
 
+	msr CPSR_c, FIQ_MODE_I_1_F_1 	@ FIQ mode, interuptions disnabled
+	ldr sp, =STACK_FIQ_BASE			@ Initialize sp_FIQ
+
 	msr CPSR_c, IRQ_MODE_I_1_F_1 	@ IRQ mode, interuptions disnabled
 	ldr sp, =STACK_IRQ_BASE			@ Initialize sp_IRQ
+
+	msr CPSR_c, ABT_MODE_I_1_F_1 	@ ABT mode, interuptions disnabled
+	ldr sp, =STACK_ABT_BASE			@ Initialize sp_ABT
+
+	msr CPSR_c, UND_MODE_I_1_F_1 	@ UND mode, interuptions disnabled
+	ldr sp, =STACK_UND_BASE			@ Initialize sp_UND
 
 	msr CPSR_c, SYS_MODE_I_1_F_1 	@ SYS mode, interuptions disnabled
 	ldr sp, =STACK_SYS_BASE			@ Initialize sp_SYS
@@ -58,17 +67,18 @@ initialize_stacks:
 	ldr sp, =STACK_SVC_BASE			@ Initialize sp_SVC
 
 set_gpt:
+	.set TIME_SZ, 				0x64
 	@ Constantes para os enderecos do GPT
-	.set GPT_BASE, 			0x53FA0000
-	.set GPT_CR, 			0x0
-	.set GPT_PR, 			0x4
-	.set GPT_SR,			0x8
-	.set GPT_OCR1,			0x10
-	.set GPT_IR,			0xC
+	.set GPT_BASE, 				0x53FA0000
+	.set GPT_CR, 				0x0
+	.set GPT_PR, 				0x4
+	.set GPT_SR,				0x8
+	.set GPT_OCR1,				0x10
+	.set GPT_IR,				0xC
 	@ Valores a serem setados em GPT
 	.set GPT_CR_val, 			0x41
 	.set GPT_PR_val, 			0x0
-	.set GPT_OCR1_val,			0x64
+	.set GPT_OCR1_val,			TIME_SZ
 	.set GPT_IR_val,			0x1
 	
 	@ Carrega a base do GPT
@@ -142,17 +152,24 @@ set_gpio:
 	@ Constantes para os valores do GPIO
 	.set GPIO_GDIR_val, 		0xFFFC003E
 
+
+
 	@ Configurar entradas e saídas da GPIO
-	ldr r0, =GPT_CR_val
-	str	r0, [r1, #GPT_CR]
+	ldr r0, =GPIO_GDIR_val
+	str	r0, [r1, #GPIO_GDIR]
 
 
 @ Tentativa de mudar para o modo usuário
 CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
+	
+	ldr r1, =USER_START_POSITION
+	mov r0, #USR_MODE_I_1_F_1		@ Read the USR_MODE_I_1_F_1 mask with 
+@											Interuption Flags Disabled
 
-	msr CPSR_c, #0x10			@ USR mode, interuptions enabled
-	ldr pc, =0x77802000			@ Jump to user start position
-
+	bic r0, #0b11000000				@ Enable interuptions I=0; F=0;
+	msr CPSR_c, r0 					@ USR mode, interuptions enabled
+	mov pc, r1						@ Jump to user start position
+	
 
 
 
@@ -167,7 +184,15 @@ IRQ_HANDLER:
 
 
 
+	@ Le o endereço do contador
+	ldr r2, =system_time
+	@ Carega o contador
+	ldr r0, [r2]
+	add r0, r0, #1
+	@ Grava de volta o contador incrementado
+	str r0,[r2]
 		
+
 		ldmfd sp!, {r0, r2}
 		@ Ajusta o lr antes de retornar
 		sub 	lr, lr, #4
@@ -177,6 +202,7 @@ SVC_HANDLER:
 		stmfd sp!, {r0-r12, lr}
 
 
+	
 	sub r7, r7, #16
 	add pc, pc, r7, lsl #3
 	mov r0, r0
@@ -196,7 +222,7 @@ SVC_HANDLER:
 	b set_alarm
 
 	end_svc_handler:
-		ldmfd sp!, {r0-r12, lr}
+		ldmfd sp!, {r0-r12,lr}
 		movs 	pc, lr
 
 
@@ -254,18 +280,33 @@ set_alarm:
 
 
 .data
-
+system_time:
+.word 0x0
 @ Declaração das Stacks
+
+.org STACKS_START_POSITION
 
 .set DEFAULT_STACK_SIZE, 	0x100
 
+.set FIQ_STACK_SIZE, 		0x1
 .set IRQ_STACK_SIZE, 		DEFAULT_STACK_SIZE
 .set SVC_STACK_SIZE, 		DEFAULT_STACK_SIZE
+.set ABT_STACK_SIZE, 		0x1
+.set UND_STACK_SIZE, 		0x1
 .set SYS_STACK_SIZE, 		DEFAULT_STACK_SIZE
 
 
+STACK_FIQ_END: .skip FIQ_STACK_SIZE
+STACK_FIQ_BASE:
+
 STACK_IRQ_END: .skip IRQ_STACK_SIZE
 STACK_IRQ_BASE:
+
+STACK_ABT_END: .skip ABT_STACK_SIZE
+STACK_ABT_BASE:
+
+STACK_UND_END: .skip UND_STACK_SIZE
+STACK_UND_BASE:
 
 STACK_SYS_END: .skip SYS_STACK_SIZE
 STACK_SYS_BASE:
