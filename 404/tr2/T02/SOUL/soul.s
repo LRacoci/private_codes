@@ -63,17 +63,18 @@ initialize_stacks:
 	ldr sp, =STACK_SVC_BASE			@ Initialize sp_SVC
 
 set_gpt:
+	.set TIME_SZ, 				0x64
 	@ Constantes para os enderecos do GPT
-	.set GPT_BASE, 			0x53FA0000
-	.set GPT_CR, 			0x0
-	.set GPT_PR, 			0x4
-	.set GPT_SR,			0x8
-	.set GPT_OCR1,			0x10
-	.set GPT_IR,			0xC
+	.set GPT_BASE, 				0x53FA0000
+	.set GPT_CR, 				0x0
+	.set GPT_PR, 				0x4
+	.set GPT_SR,				0x8
+	.set GPT_OCR1,				0x10
+	.set GPT_IR,				0xC
 	@ Valores a serem setados em GPT
 	.set GPT_CR_val, 			0x41
 	.set GPT_PR_val, 			0x0
-	.set GPT_OCR1_val,			0x64
+	.set GPT_OCR1_val,			TIME_SZ
 	.set GPT_IR_val,			0x1
 	
 	@ Carrega a base do GPT
@@ -164,14 +165,22 @@ IRQ_HANDLER:
 
 
 
+	@ Le o endereço do contador
+	ldr r2, =system_time
+	@ Carega o contador
+	ldr r0, [r2]
+	add r0, r0, #1
+	@ Grava de volta o contador incrementado
+	str r0,[r2]
 		
+
 		ldmfd sp!, {r0, r2}
 		@ Ajusta o lr antes de retornar
 		sub 	lr, lr, #4
 		movs 	pc, lr
 
 SVC_HANDLER:
-		stmfd sp!, {r0-r14}
+		stmfd sp!, {r0-r12, lr}
 
 
 	sub r7, r7, #16
@@ -191,7 +200,7 @@ SVC_HANDLER:
 	b set_alarm
 
 	end_svc_handler:
-		ldmfd sp!, {r0-r14}
+		ldmfd sp!, {r0-r12,lr}
 		movs 	pc, lr
 
 
@@ -249,8 +258,11 @@ set_alarm:
 
 
 .data
-
+system_time:
+.word 0x0
 @ Declaração das Stacks
+
+.org STACKS_START_POSITION
 
 .set DEFAULT_STACK_SIZE, 	0x100
 
