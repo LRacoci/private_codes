@@ -1,4 +1,4 @@
-.set USER_START_POSITION, 	0x77812000
+.set USER_START_POSITION, 	0x77802000
 .set STACKS_START_POSITION, 0x77852000
 
 .org 0x0
@@ -37,6 +37,10 @@ interrupt_vector:
 .set SYS_MODE_I_1_F_1, 		0xDF
 
 RESET_HANDLER:
+
+    @Set interrupt table base address on coprocessor 15.
+    ldr r0, =interrupt_vector
+    mcr p15, 0, r0, c12, c0, 0
 
 initialize_stacks:
 
@@ -139,6 +143,21 @@ set_tzic:
 	@instrucao msr - habilita interrupcoes
 	msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
 
+set_gpio:
+	@ Constantes para os enderecos do GPIO
+	.set GPIO_BASE, 			0x53F84000
+	.set GPIO_DR,				0x0
+	.set GPIO_GDIR, 			0x4
+	.set GPIO_PSR, 				0x8
+	@ Constantes para os valores do GPIO
+	.set GPIO_GDIR_val, 		0xFFFC003E
+
+
+
+	@ Configurar entradas e saídas da GPIO
+	ldr r0, =GPIO_GDIR_val
+	str	r0, [r1, #GPIO_GDIR]
+
 
 @ Tentativa de mudar para o modo usuário
 CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
@@ -183,8 +202,11 @@ SVC_HANDLER:
 		stmfd sp!, {r0-r12, lr}
 
 
+	
 	sub r7, r7, #16
 	add pc, pc, r7, lsl #3
+	mov r0, r0
+	
 	b read_sonar
 	b end_svc_handler
 	b register_proximity_callback 
