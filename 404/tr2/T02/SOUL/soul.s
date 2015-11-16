@@ -65,28 +65,24 @@ set_gpt:
 	.set GPT_SR,			0x8
 	.set GPT_OCR1,			0x10
 	.set GPT_IR,			0xC
-	@ Valores a serem setados em GPT
-	.set GPT_CR_val, 			0x41
-	.set GPT_PR_val, 			0x0
-	.set GPT_OCR1_val,			0x64
-	.set GPT_IR_val,			0x1
+
 	
 	@ Carrega a base do GPT
 	ldr r1, =GPT_BASE
 
 	@ Habilitar e configurar o clock_src para periférico
-	ldr r0, =GPT_CR_val
+	ldr r0, =0x41
 	str	r0, [r1, #GPT_CR]
 
 	@ Zerar o prescaler (GPT_PR)
-	ldr r0, =GPT_PR_val
+	ldr r0, =0x0
 	str	r0, [r1, #GPT_PR]
 	@ 	Colocar em GPT_COR1 o valor que gera 
 	@ a interrupção durante a contagem
-	ldr r0, =GPT_OCR1_val
+	ldr r0, =100
 	str	r0, [r1, #GPT_OCR1]
 	@ Habilitar a interrupção Output Compare Channel 1
-	ldr r0, =GPT_IR_val
+	ldr r0, =0b1
 	str	r0, [r1, #GPT_IR]
 
 set_tzic:
@@ -139,12 +135,17 @@ set_gpio:
 	.set GPIO_DR,				0x0
 	.set GPIO_GDIR, 			0x4
 	.set GPIO_PSR, 				0x8
-	@ Constantes para os valores do GPIO
-	.set GPIO_GDIR_val, 		0xFFFC003E
+
+
+	ldr	r1, =GPIO_BASE
 
 	@ Configurar entradas e saídas da GPIO
-	ldr r0, =GPT_CR_val
-	str	r0, [r1, #GPT_CR]
+	ldr r0, =0xFFFC003E
+	str	r0, [r1, #GPIO_GDIR]
+	@ Zera as entradas do GPIO_DR
+	ldr r2, [r1, #GPIO_DR]
+	bic r0, r2, r0 
+	str	r0, [r1, #GPIO_DR]
 
 
 @ Tentativa de mudar para o modo usuário
@@ -157,7 +158,6 @@ CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
 	bic r0, #0b11000000				@ Enable interuptions I=0; F=0;
 	msr CPSR_c, r0 					@ USR mode, interuptions enabled
 	mov pc, r1						@ Jump to user start position
-
 
 
 
@@ -213,53 +213,78 @@ SVC_HANDLER:
 
 
 
-read_sonar:
-	stmfd sp!, {r4-r12, lr}
+read_sonar:						@ 	(r0) : unsigned char 	sonar_id, 
+@									(r1) : unsigned short* 	dist
+
+		stmfd sp!, {r4-r12, lr}
 
 
-	ldmfd sp!, {r4-r12, pc}
 
 
-register_proximity_callback :
-	stmfd sp!, {r4-r12, lr}
+		ldmfd sp!, {r4-r12, pc}
 
 
-	ldmfd sp!, {r4-r12, pc}
+register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id, 
+@									(r1) : unsigned short 	dist_threshold, 
+@									(r2) : void (*f)()
+		stmfd sp!, {r4-r12, lr}
 
 
-set_motor_speed :
-	stmfd sp!, {r4-r12, lr}
 
 
-	ldmfd sp!, {r4-r12, pc}
+		ldmfd sp!, {r4-r12, pc}
 
 
-set_motors_speed:
-	stmfd sp!, {r4-r12, lr}
+set_motor_speed :				@ 	(r0) : unsigned char 	id, 
+@									(r1) : unsigned char 	speed
+
+		stmfd sp!, {r4-r12, lr}
 
 
-	ldmfd sp!, {r4-r12, pc}
 
 
-get_time:
-	stmfd sp!, {r4-r12, lr}
+
+		ldmfd sp!, {r4-r12, pc}
 
 
-	ldmfd sp!, {r4-r12, pc}
+set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0, 
+@									(r1) : unsigned char 	spd_m1
+		stmfd sp!, {r4-r12, lr}
 
 
-set_time:
-	stmfd sp!, {r4-r12, lr}
 
 
-	ldmfd sp!, {r4-r12, pc}
+
+		ldmfd sp!, {r4-r12, pc}
 
 
-set_alarm:
-	stmfd sp!, {r4-r12, lr}
+get_time:						@ 	Nao tem parametros
+
+		stmfd sp!, {r4-r12, lr}
+
+	ldr r0, =system_time
+	ldr r0, [r0]
+
+		ldmfd sp!, {r4-r12, pc}
 
 
-	ldmfd sp!, {r4-r12, pc}
+set_time:						@ 	(r0) : unsigned int 	t
+		stmfd sp!, {r4-r12, lr}
+
+	ldr r1, =system_time
+	str r0, [r1]
+
+		ldmfd sp!, {r4-r12, pc}
+
+
+set_alarm:						@	(r0) : void (*f)(), 
+@									(r1) : unsigned int time
+		stmfd sp!, {r4-r12, lr}
+
+
+
+
+		ldmfd sp!, {r4-r12, pc}
 
 
 
