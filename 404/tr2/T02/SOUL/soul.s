@@ -140,11 +140,11 @@ set_gpio:
 	ldr	r1, =GPIO_BASE
 
 	@ Configurar entradas e saídas da GPIO
-	ldr r0, =0xFFFC003E
+	ldr r0, =0xFFFC003E @ 1 = Saída 0 = Entrada
 	str	r0, [r1, #GPIO_GDIR]
 	@ Zera as entradas do GPIO_DR
 	ldr r2, [r1, #GPIO_DR]
-	bic r0, r2, r0 
+	and r0, r2, r0 
 	str	r0, [r1, #GPIO_DR]
 
 
@@ -191,7 +191,10 @@ SVC_HANDLER:
 
 	sub r7, r7, #16
 	add pc, pc, r7, lsl #3
-	mov r0, r0
+	@	 Apesar de parecer inútil esse comando 
+	@ é necessário para o salto na intstrução 
+	@ anterior dar certo
+	mov r0, r0 
 	
 	b read_sonar
 	b end_svc_handler
@@ -218,9 +221,17 @@ read_sonar:						@ 	(r0) : unsigned char 	sonar_id,
 
 		stmfd sp!, {r4-r12, lr}
 
+	@ Conferir se os argumentos são válidos
+	cmp r0, #0b1111
+	movhi r0, #0
+	subhi r0, r0, 1
+	bhi end_read_sonar
+	@ Corpo da funcao
 
 
 
+
+	end_read_sonar:
 		ldmfd sp!, {r4-r12, pc}
 
 
@@ -228,10 +239,27 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 @									(r1) : unsigned short 	dist_threshold, 
 @									(r2) : void (*f)()
 		stmfd sp!, {r4-r12, lr}
+	
+	@ Conferir se os argumentos são válidos
+	ldr r4, =MAX_CALLBACKS
+	ldr r3, =active_callbacks
+	ldr r3, [r3]
+	cmp r3, r4
+	movhi r0, #0
+	subhi r0, r0, 1
+	bhi end_register_proximity_callback
+	cmp r0, #0b1111
+	movhi r0, #0
+	subhi r0, r0, 2
+	bhi end_register_proximity_callback
+	
+	@ Corpo da funcao
 
 
 
 
+	mov r0, #0
+	end_register_proximity_callback:
 		ldmfd sp!, {r4-r12, pc}
 
 
@@ -239,11 +267,21 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 @									(r1) : unsigned char 	speed
 
 		stmfd sp!, {r4-r12, lr}
+	
+	@ Conferir se os argumentos são válidos
+	cmp r0, #0b1
+	movhi r0, #0
+	subhi r0, r0, 1
+	bhi end_set_motor_speed
+	cmp r1, #0b111111
+	movhi r0, #0
+	subhi r0, r0, 2
+	bhi end_set_motor_speed
+	@ Corpo da funcao
 
 
 
-
-
+	end_set_motor_speed:
 		ldmfd sp!, {r4-r12, pc}
 
 
@@ -251,10 +289,23 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 @									(r1) : unsigned char 	spd_m1
 		stmfd sp!, {r4-r12, lr}
 
+	@ Conferir se os argumentos são válidos
+	cmp r0, #0b111111
+	movhi r0, #0
+	subhi r0, r0, 1
+	bhi end_set_motors_speed
+	cmp r1, #0b111111
+	movhi r0, #0
+	subhi r0, r0, 2
+	bhi end_set_motors_speed
+
+	@ Corpo da funcao
 
 
 
 
+
+	end_set_motors_speed:
 		ldmfd sp!, {r4-r12, pc}
 
 
@@ -281,9 +332,27 @@ set_alarm:						@	(r0) : void (*f)(),
 @									(r1) : unsigned int time
 		stmfd sp!, {r4-r12, lr}
 
+	@ Conferir se os argumentos são válidos
+	ldr r2, =MAX_ALARMS
+	ldr r3, =active_alarms
+	ldr r3, [r3]
+	cmp r3, r2
+	movhi r0, #0
+	subhi r0, r0, 1
+	bhi end_set_alarm
+	ldr r2, =system_time
+	ldr r2, [r2]
+	cmp r1, r2 
+	movlo r0, #0
+	sublo r0, r0, 2
+	blo end_set_alarm
+	@ Corpo da funcao
 
 
 
+
+
+	end_set_alarm:
 		ldmfd sp!, {r4-r12, pc}
 
 
