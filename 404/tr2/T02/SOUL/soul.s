@@ -175,6 +175,7 @@ IRQ_HANDLER:
 	ldr r2, =system_time
 	@ Carega o contador
 	ldr r0, [r2]
+	@ Incrementa o contador
 	add r0, r0, #1
 	@ Grava de volta o contador incrementado
 	str r0,[r2]
@@ -242,8 +243,8 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 	
 	@ Conferir se os argumentos são válidos
 	ldr r4, =MAX_CALLBACKS
-	ldr r3, =active_callbacks
-	ldr r3, [r3]
+	ldr r5, =active_callbacks
+	ldr r3, [r5]
 	cmp r3, r4
 	movhi r0, #0
 	subhi r0, r0, 1
@@ -254,6 +255,11 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 	bhi end_register_proximity_callback
 	
 	@ Corpo da funcao
+
+	@ Incrementa o contador
+	add r3, r3, #1
+	@ Grava de volta o contador incrementado
+	str r3,[r5]
 
 
 
@@ -346,7 +352,8 @@ set_alarm:						@	(r0) : void (*f)(),
 	movlo r0, #0
 	sublo r0, r0, 2
 	blo end_set_alarm
-	@ Corpo da funcao
+@ Corpo da funcao
+	@ Incremento contador de alarmes
 
 
 
@@ -362,6 +369,10 @@ set_alarm:						@	(r0) : void (*f)(),
 .data
 system_time:
 .word 0x0
+active_alarms:
+.word 0x0
+active_callbacks:
+
 @ Declaração das Stacks
 
 .set DEFAULT_STACK_SIZE, 	0x100
