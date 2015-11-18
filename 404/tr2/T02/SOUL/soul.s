@@ -188,7 +188,7 @@ IRQ_HANDLER:
 
 SVC_HANDLER:
 		stmfd sp!, {r1-r12, lr}
-
+	
 	sub r7, r7, #16
 	ldr lr, =end_svc_handler
 	add pc, pc, r7, lsl #2
@@ -258,9 +258,9 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 	ldr r5, =active_callbacks
 	ldr r3, [r5]
 	cmp r3, r4
-	movhi r0, #0
-	subhi r0, r0, #1
-	bhi end_register_proximity_callback
+	movhs r0, #0
+	subhs r0, r0, #1
+	bhs end_register_proximity_callback
 	cmp r0, #0b1111
 	movhi r0, #0
 	subhi r0, r0, #2
@@ -308,7 +308,11 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 	orrne r2, #(0b111111<<26)
 	andne r2, r1, lsl #26
 
+
 	str	r2, [r3, #GPIO_DR] 
+
+
+	mov r0, #0
 
 	end_set_motor_speed:
 		ldmfd sp!, {r4-r12, pc}
@@ -344,7 +348,7 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 
 
 
-
+	mov r0, #0
 	end_set_motors_speed:
 		ldmfd sp!, {r4-r12, pc}
 
@@ -377,9 +381,9 @@ set_alarm:						@	(r0) : void (*f)(),
 	ldr r4, =active_alarms
 	ldr r3, [r4]
 	cmp r3, r2
-	movhi r0, #0
-	subhi r0, r0, #1
-	bhi end_set_alarm
+	movhs r0, #0
+	subhs r0, r0, #1
+	bhs end_set_alarm
 	ldr r2, =system_time
 	ldr r2, [r2]
 	cmp r1, r2 @ r1 = time; r2 = System Time
@@ -397,7 +401,7 @@ set_alarm:						@	(r0) : void (*f)(),
 
 
 
-
+	mov r0, #0
 	end_set_alarm:
 		ldmfd sp!, {r4-r12, pc}
 
