@@ -223,6 +223,24 @@ read_sonar:						@ 	(r0) : unsigned char 	sonar_id,
 	bhi end_read_sonar
 	@ Corpo da funcao
 
+	@ SONAR_MUX <= sonar_id (r0)
+
+	@ TRIGGER <= 0; Delay 15ms
+
+	@ TRIGGER <= 1; Delay 15ms
+
+	@ TRIGGER <= 0;
+
+	@ FLAG == 1 ?
+
+	@ SIM
+		@ Distancia <= Sonar_Data 
+
+	@ NAO 
+		@ Delay 10ms
+
+		@ Jump to (FLAG == 1 ?)
+
 
 
 
@@ -277,9 +295,20 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 	movhi r0, #0
 	subhi r0, r0, #2
 	bhi end_set_motor_speed
+	
 	@ Corpo da funcao
+	@ @ @ @ @ @ @ @ @ 
+	ldr	r3, =GPIO_BASE
+	ldr r2, [r3, #GPIO_PSR]
 
+	cmp r0, #0
 
+	orreq r2, #(0b111111<<20)
+	andeq r2, r0, lsl #20
+	orrne r2, #(0b111111<<26)
+	andne r2, r1, lsl #26
+
+	str	r2, [r3, #GPIO_DR] 
 
 	end_set_motor_speed:
 		ldmfd sp!, {r4-r12, pc}
@@ -298,8 +327,19 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 	movhi r0, #0
 	subhi r0, r0, #2
 	bhi end_set_motors_speed
-
 	@ Corpo da funcao
+	@ @ @ @ @ @ @ @ @ 
+
+	ldr	r3, =GPIO_BASE
+	ldr r2, [r3, #GPIO_PSR]
+
+	orr r2, #(0b111111<<20)
+	and r2, r0, lsl #20
+	orr r2, #(0b111111<<26)
+	and r2, r1, lsl #26
+
+
+	str	r2, [r3, #GPIO_DR] 
 
 
 
