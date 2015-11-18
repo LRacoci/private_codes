@@ -163,6 +163,8 @@ CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
 
 IRQ_HANDLER:
 		stmfd sp!, {r0, r2}
+	@ Habilitar/Desabilitar interupcoes
+
 
 	@ 	Informa ao GPT que o  processador 
 	@ já está ciente de que ocorreu a interrupção
@@ -188,7 +190,9 @@ IRQ_HANDLER:
 
 SVC_HANDLER:
 		stmfd sp!, {r1-r12, lr}
-	
+	@ Habilitar/Desabilitar interupcoes
+
+
 	sub r7, r7, #16
 	ldr lr, =end_svc_handler
 	add pc, pc, r7, lsl #2
@@ -303,14 +307,15 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 
 	cmp r0, #0
 
-	orreq r2, #(0b111111<<20)
-	andeq r2, r0, lsl #20
-	orrne r2, #(0b111111<<26)
-	andne r2, r1, lsl #26
+	biceq r2, #(0b111111<<19)
+	orreq r2, r0, lsl #19
+	bicne r2, #(0b111111<<26)
+	orrne r2, r1, lsl #26
 
 
 	str	r2, [r3, #GPIO_DR] 
 
+	bl delay_100
 
 	mov r0, #0
 
@@ -337,10 +342,10 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 	ldr	r3, =GPIO_BASE
 	ldr r2, [r3, #GPIO_PSR]
 
-	orr r2, #(0b111111<<20)
-	and r2, r0, lsl #20
-	orr r2, #(0b111111<<26)
-	and r2, r1, lsl #26
+	bic r2, #(0b111111<<19)
+	orr r2, r0, lsl #19
+	bic r2, #(0b111111<<26)
+	orr r2, r1, lsl #26
 
 
 	str	r2, [r3, #GPIO_DR] 
@@ -412,13 +417,24 @@ set_alarm:						@	(r0) : void (*f)(),
 .data
 system_time:
 .word 0x0
+
+@ Alarmes
+.set MAX_ALARMS, 0x8
+
 active_alarms:
 .word 0x0
+
+alarms_vect:
+.skip MAX_ALARMS
+
+@ Callbacks
+.set MAX_CALLBACKS, 0x8
+
 active_callbacks:
 .word 0x0
 
-.set MAX_ALARMS, 0x8
-.set MAX_CALLBACKS, 0x8
+callbacks_vect:
+.skip MAX_CALLBACKS
 
 @ Declaração das Stacks
 
@@ -429,16 +445,30 @@ active_callbacks:
 .set SYS_STACK_SIZE, 		DEFAULT_STACK_SIZE
 
 
-STACK_IRQ_END: .skip IRQ_STACK_SIZE
+STACK_IRQ_END: 
+.skip IRQ_STACK_SIZE
 STACK_IRQ_BASE:
 
-STACK_SYS_END: .skip SYS_STACK_SIZE
+STACK_SYS_END: 
+.skip SYS_STACK_SIZE
 STACK_SYS_BASE:
 
-STACK_SVC_END: .skip SVC_STACK_SIZE
+STACK_SVC_END: 
+.skip SVC_STACK_SIZE
 STACK_SVC_BASE:
 
 .text
+
+delay_100:
+stmfd sp!, {r4, lr}
+
+	mov r4, #0
+	loop_delay_1:
+		cmp r4, #100
+		add r4, r4, #100
+	bhs loop_delay_1
+
+ldmfd sp!, {r4, pc}
 
 UNDEFINED_INSTRUCTION:
 INSTRUCTION_ABORT_HANDLER:
