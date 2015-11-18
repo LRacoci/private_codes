@@ -187,9 +187,8 @@ IRQ_HANDLER:
 		movs 	pc, lr
 
 SVC_HANDLER:
-		stmfd sp!, {r0-r12, lr}
+		stmfd sp!, {r1-r12, lr}
 
-	msr r0, 
 	sub r7, r7, #16
 	ldr lr, =end_svc_handler
 	add pc, pc, r7, lsl #2
@@ -207,7 +206,7 @@ SVC_HANDLER:
 	b set_alarm
 
 	end_svc_handler:
-		ldmfd 	sp!, {r0-r12, lr}
+		ldmfd 	sp!, {r1-r12, lr}
 		movs 	pc, lr
 
 
@@ -367,9 +366,10 @@ system_time:
 active_alarms:
 .word 0x0
 active_callbacks:
+.word 0x0
 
-.set MAX_ALARMS, 0x10
-.set MAX_CALLBACKS, 0x10
+.set MAX_ALARMS, 0x8
+.set MAX_CALLBACKS, 0x8
 
 @ Declaração das Stacks
 
