@@ -189,30 +189,25 @@ IRQ_HANDLER:
 SVC_HANDLER:
 		stmfd sp!, {r0-r12, lr}
 
-
+	msr r0, 
 	sub r7, r7, #16
-	add pc, pc, r7, lsl #3
+	ldr lr, =end_svc_handler
+	add pc, pc, r7, lsl #2
 	@	 Apesar de parecer inútil esse comando 
 	@ é necessário para o salto na intstrução 
 	@ anterior dar certo
 	mov r0, r0 
 	
 	b read_sonar
-	b end_svc_handler
 	b register_proximity_callback 
-	b end_svc_handler
 	b set_motor_speed 
-	b end_svc_handler
 	b set_motors_speed
-	b end_svc_handler
 	b get_time
-	b end_svc_handler
 	b set_time
-	b end_svc_handler
 	b set_alarm
 
 	end_svc_handler:
-		ldmfd sp!, {r0-r12, lr}
+		ldmfd 	sp!, {r0-r12, lr}
 		movs 	pc, lr
 
 
@@ -348,7 +343,7 @@ set_alarm:						@	(r0) : void (*f)(),
 	bhi end_set_alarm
 	ldr r2, =system_time
 	ldr r2, [r2]
-	cmp r1, r2 
+	cmp r1, r2 @ r1 = time; r2 = System Time
 	movlo r0, #0
 	sublo r0, r0, #2
 	blo end_set_alarm
