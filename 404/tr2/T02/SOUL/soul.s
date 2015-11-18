@@ -189,7 +189,6 @@ IRQ_HANDLER:
 SVC_HANDLER:
 		stmfd sp!, {r0-r12, lr}
 
-	msr r0, 
 	sub r7, r7, #16
 	ldr lr, =end_svc_handler
 	add pc, pc, r7, lsl #2
@@ -335,8 +334,8 @@ set_alarm:						@	(r0) : void (*f)(),
 
 	@ Conferir se os argumentos são válidos
 	ldr r2, =MAX_ALARMS
-	ldr r3, =active_alarms
-	ldr r3, [r3]
+	ldr r4, =active_alarms
+	ldr r3, [r4]
 	cmp r3, r2
 	movhi r0, #0
 	subhi r0, r0, #1
@@ -349,6 +348,11 @@ set_alarm:						@	(r0) : void (*f)(),
 	blo end_set_alarm
 @ Corpo da funcao
 	@ Incremento contador de alarmes
+	add r3, r3, #1
+	@ Grava de volta o contador incrementado
+	str r3,[r4]
+
+
 
 
 
@@ -367,6 +371,7 @@ system_time:
 active_alarms:
 .word 0x0
 active_callbacks:
+.word 0x0
 
 .set MAX_ALARMS, 0x10
 .set MAX_CALLBACKS, 0x10
