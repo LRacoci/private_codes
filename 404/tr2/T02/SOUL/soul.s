@@ -225,7 +225,7 @@ read_sonar:						@ 	(r0) : unsigned char 	sonar_id,
 	@ Conferir se os argumentos são válidos
 	cmp r0, #0b1111
 	movhi r0, #0
-	subhi r0, r0, 1
+	subhi r0, r0, #1
 	bhi end_read_sonar
 	@ Corpo da funcao
 
@@ -247,11 +247,11 @@ register_proximity_callback :	@ 	(r0) : unsigned char 	sensor_id,
 	ldr r3, [r5]
 	cmp r3, r4
 	movhi r0, #0
-	subhi r0, r0, 1
+	subhi r0, r0, #1
 	bhi end_register_proximity_callback
 	cmp r0, #0b1111
 	movhi r0, #0
-	subhi r0, r0, 2
+	subhi r0, r0, #2
 	bhi end_register_proximity_callback
 	
 	@ Corpo da funcao
@@ -277,11 +277,11 @@ set_motor_speed :				@ 	(r0) : unsigned char 	id,
 	@ Conferir se os argumentos são válidos
 	cmp r0, #0b1
 	movhi r0, #0
-	subhi r0, r0, 1
+	subhi r0, r0, #1
 	bhi end_set_motor_speed
 	cmp r1, #0b111111
 	movhi r0, #0
-	subhi r0, r0, 2
+	subhi r0, r0, #2
 	bhi end_set_motor_speed
 	@ Corpo da funcao
 
@@ -298,11 +298,11 @@ set_motors_speed:				@ 	(r0) : unsigned char 	spd_m0,
 	@ Conferir se os argumentos são válidos
 	cmp r0, #0b111111
 	movhi r0, #0
-	subhi r0, r0, 1
+	subhi r0, r0, #1
 	bhi end_set_motors_speed
 	cmp r1, #0b111111
 	movhi r0, #0
-	subhi r0, r0, 2
+	subhi r0, r0, #2
 	bhi end_set_motors_speed
 
 	@ Corpo da funcao
@@ -344,13 +344,13 @@ set_alarm:						@	(r0) : void (*f)(),
 	ldr r3, [r3]
 	cmp r3, r2
 	movhi r0, #0
-	subhi r0, r0, 1
+	subhi r0, r0, #1
 	bhi end_set_alarm
 	ldr r2, =system_time
 	ldr r2, [r2]
 	cmp r1, r2 
 	movlo r0, #0
-	sublo r0, r0, 2
+	sublo r0, r0, #2
 	blo end_set_alarm
 @ Corpo da funcao
 	@ Incremento contador de alarmes
@@ -372,6 +372,9 @@ system_time:
 active_alarms:
 .word 0x0
 active_callbacks:
+
+.set MAX_ALARMS, 0x10
+.set MAX_CALLBACKS, 0x10
 
 @ Declaração das Stacks
 
