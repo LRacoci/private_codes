@@ -25,7 +25,7 @@ set_motor_speed: 					@ 	(r0) : unsigned char 	id,
 		stmfd sp!, {r7, lr}			@ Salva os registradores callee-save 
 @										e o endereço de retorno
 
-	moveq 	r7, 	#18				@ Identifica a syscall 
+	mov 	r7, 	#18				@ Identifica a syscall 
 	svc 	0x0
 
 		ldmfd sp!, {r7, pc} 		@ Restaura os registradores e retorna

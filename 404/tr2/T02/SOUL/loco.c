@@ -41,11 +41,10 @@ void search_wall();
 
 /* Função principal */
 void _start(void) {
-	go_front(VEL);
 	/* Loop principal */
 	do{
-		test_all_movements(VEL);
-		delay();
+		set_motor_speed(0,10);
+		set_motor_speed(1,10);
 	}while(1);
 	
 }
