@@ -40,7 +40,7 @@ SOUL.x: $(SOUL_OBJS)
 	$(LD) $^ -o $@ $(LD_FLAGS) --section-start=.iv=0x778005e0 -Ttext=0x77800700 -Tdata=0x77801800 -e 0x778005e0
 
 LOCO.x: loco.o bico.o
-	$(LD) $^ -o $@ $(LD_FLAGS) -Ttext=0x77802000 # Voltar para -Ttext=0x77802000
+	$(LD) $^ -o $@ $(LD_FLAGS) -Ttext=0x77802000 
 
 disk.img: SOUL.x LOCO.x
 	mksd.sh --so SOUL.x --user LOCO.x
@@ -59,12 +59,15 @@ run: disk.img
 run_gdb: disk.img
 	arm-sim --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,cp15,sd
 
-run_gdb_player:
+run_gdb_player_flags: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,cp15,sd
+
+run_gdb_player: disk.img
+	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g
 
 # Roda com suporte ao gdb
 gdb: disk.img
-	arm-eabi-gdb SOUL.x LOCO.x
+	arm-eabi-gdb SOUL.x
 
 # Abre a sessao do player
 player:
