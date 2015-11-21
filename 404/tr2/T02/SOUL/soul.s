@@ -139,7 +139,7 @@ RESET_HANDLER:
 
 		@ Zera as entradas do GPIO_DR
 		ldr r2, [r1, #GPIO_DR]
-		and r0, r2, r0 
+		bic r0, r2, r0 
 		str	r0, [r1, #GPIO_DR]
 
 
@@ -284,7 +284,7 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
 		ldmfd sp!, {r4-r12, pc}
 
 
-set_motor_speed :				@ (r0) : unsigned char 	id, 
+set_motor_speed:				@ (r0) : unsigned char 	id, 
 								@ (r1) : unsigned char 	speed
 
 	stmfd sp!, {r4-r12, lr}
@@ -312,7 +312,7 @@ set_motor_speed :				@ (r0) : unsigned char 	id,
 	cmp r0, #0
 
 	biceq r2, #(0b111111<<19)
-	orreq r2, r0, lsl #19
+	orreq r2, r1, lsl #19
 	bicne r2, #(0b111111<<26)
 	orrne r2, r1, lsl #26
 
@@ -354,7 +354,7 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 
 	str	r2, [r3, #GPIO_DR] 
 
-
+	bl delay_100
 
 
 	mov r0, #0
@@ -396,9 +396,9 @@ set_alarm:						@ (r0) : void (*f)(),
 	ldr r2, =system_time
 	ldr r2, [r2]
 	cmp r1, r2 @ r1 = time; r2 = System Time
-	movlo r0, #0
-	sublo r0, r0, #2
-	blo end_set_alarm
+	movls r0, #0
+	subls r0, r0, #2
+	bls end_set_alarm
 	
 	@ Corpo da funcao
 	@ Incremento contador de alarmes
@@ -424,7 +424,7 @@ system_time:
 .word 0x0
 
 @ Alarmes
-.set MAX_ALARMS, 0x8
+.set MAX_ALARMS, 0x1
 
 active_alarms:
 .word 0x0
