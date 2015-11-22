@@ -220,27 +220,48 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 	bhi end_read_sonar
 
 	@ Corpo da funcao
+	@ @ @ @ @ @ @ @ @ @ @ @ @ @ @
 
 	@ SONAR_MUX <= sonar_id (r0)
+	ldr	r3, =GPIO_BASE 			@ Carrega a Base do GPIO
+	ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de DR
 
-	@ TRIGGER <= 0; Delay 15ms
+	bic r2, #(0b1111<<2)		@ Limpa Bits de 2 a 5
+	orr r2, r0, lsl #2			@ Escreve sonar_id em SONAR_MUX
 
-	@ TRIGGER <= 1; Delay 15ms
+	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
+
+	@ TRIGGER <= 0; Delay
+	bic r2, #0b10			@ Limpa o Trigger
+	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
+	bl delay_sonar			@ Salta para o loop de espera
+
+	@ TRIGGER <= 1; Delay
+	orr r2, #0b10				@ Adiciona o valor 1 bit do trigger
+	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
+	bl delay_sonar
 
 	@ TRIGGER <= 0;
+	bic r2, #0b10			@ Limpa o Trigger
+	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
 
 	@ FLAG == 1 ?
+	loop_flag:
+		ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de DR
+		and r2, r2, #1
+		cmp r2, #1
+		@ Nao
+			@ Delay
+		blne delay_sonar
+		bne loop_flag
 
 	@ SIM
-		@ Distancia <= Sonar_Data 
-
-	@ NAO 
-		@ Delay 10ms
-
-		@ Jump to (FLAG == 1 ?)
-
-
-
+		@ Distancia <= Sonar_Data
+	ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de DR
+	lsl r2, #14					@ Desloca os bits de r2 para esquerda e depois para
+	lsr r2, #20					@ direita para manter apenas os bits da distancia
+	
+	mov r0, r2
 
 	end_read_sonar:
 		ldmfd sp!, {r4-r12, pc}
@@ -307,7 +328,7 @@ set_motor_speed:				@ (r0) : unsigned char 	id,
 	@ Corpo da funcao
 	@ @ @ @ @ @ @ @ @ 
 	ldr	r3, =GPIO_BASE
-	ldr r2, [r3, #GPIO_PSR]
+	ldr r2, [r3, #GPIO_DR]
 
 	cmp r0, #0
 
@@ -344,7 +365,7 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 	@ @ @ @ @ @ @ @ @ 
 
 	ldr	r3, =GPIO_BASE
-	ldr r2, [r3, #GPIO_PSR]
+	ldr r2, [r3, #GPIO_DR]
 
 	bic r2, #(0b111111<<19)
 	orr r2, r0, lsl #19
@@ -472,6 +493,17 @@ stmfd sp!, {r4, lr}
 		cmp r4, #100
 		add r4, r4, #100
 	bhs loop_delay_1
+
+ldmfd sp!, {r4, pc}
+
+delay_sonar:
+stmfd sp!, {r4, lr}
+
+	mov r4, #0
+	loop_delay_2:
+		cmp r4, #2048
+		add r4, r4, #100
+	bhs loop_delay_2
 
 ldmfd sp!, {r4, pc}
 
