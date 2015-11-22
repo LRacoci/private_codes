@@ -27,7 +27,7 @@ interrupt_vector:
 
 .text
 
-@ Modes with Interuption Flags Disabled
+@ Modos com as flags de interrupcoes desabilitadas
 .set USR_MODE_I_1_F_1, 		0xD0
 .set FIQ_MODE_I_1_F_1, 		0xD1
 .set IRQ_MODE_I_1_F_1, 		0xD2
@@ -35,6 +35,15 @@ interrupt_vector:
 .set ABT_MODE_I_1_F_1, 		0xD7
 .set UND_MODE_I_1_F_1, 		0xDB
 .set SYS_MODE_I_1_F_1, 		0xDF
+
+@ Modos com as flags de interrupcoes habilitadas
+.set USR_MODE_I_0_F_0, 		0x10
+.set FIQ_MODE_I_0_F_0, 		0x11
+.set IRQ_MODE_I_0_F_0, 		0x12
+.set SVC_MODE_I_0_F_0, 		0x13
+.set ABT_MODE_I_0_F_0, 		0x17
+.set UND_MODE_I_0_F_0, 		0x1B
+.set SYS_MODE_I_0_F_0, 		0x1F
 
 RESET_HANDLER:
 
@@ -143,19 +152,17 @@ RESET_HANDLER:
 		str	r0, [r1, #GPIO_DR]
 
 
-	@ Tentativa de mudar para o modo usuário
+	@ Muda para o modo usuário
 	CHANGE_TO_USER_MODE_IN_THE_START_POSITION:
 
-		ldr r1, =USER_START_POSITION
-		mov r0, #USR_MODE_I_1_F_1		@ Le a mascara USR_MODE_I_1_F_1 com 
-										@ Flags de interrupcao desabilitadas
-		bic r0, #0b11000000				@ Abilita interrupcoes na mascara I=0; F=0;
-		msr CPSR_c, r0 					@ USR mode, interrupcoes abilitadas
+		ldr r1, =USER_START_POSITION	@ Carrega a posicao do programa do usuario
+		msr CPSR_c, #USR_MODE_I_0_F_0   @ Modo USR, com as interrupcoes habilitadas
 		mov pc, r1						@ Pula para a posicao de inicio do usuario
 
 IRQ_HANDLER:
-	stmfd sp!, {r0, r2}
-	@ Habilitar/Desabilitar interrupcoes
+	stmfd sp!, {r0-r12, lr}
+
+	
 
 	@ Informa ao GPT que o  processador 
 	@ já está ciente de que ocorreu a interrupção
@@ -164,25 +171,129 @@ IRQ_HANDLER:
 	str r0, [r2, #GPT_SR]
 
 
-	@ Le o endereço do contador
+	@ Le o endereço do contador de tempo de sistema
 	ldr r2, =system_time
 
-	@ Carega o contador
+	@ Carega o tempo do sistema
 	ldr r0, [r2]
 
-	@ Incrementa o contador
+	@ Tratamento de alarmes e callbacks
+	stmfd sp!, {r0, r2} 	@ Salva variáveis
+	@ Tratamento dos alarmes
+	bl alarms_handler
+	@ Tratamento das Callbacks
+	bl callbacks_handler
+	ldmfd sp!, {r0, r2}	@ Recupera contexto
+
+	
+	@ Incrementa o tempo do sistema
 	add r0, r0, #1
 
-	@ Grava de volta o contador incrementado
+	@ Grava de volta o tempo do sistema incrementado
 	str r0, [r2]
 	
-	ldmfd sp!, {r0, r2}
+	
+
+	ldmfd sp!, {r0-r12, lr}
 	@ Ajusta o lr antes de retornar
 	sub 	lr, lr, #4
 	movs 	pc, lr
 
+alarms_handler:
+	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
+
+	ldr r1, =active_alarms		@ Carrega o numero de alarmes
+	ldr r1, [r1]
+
+	ldr r2, =alarms_vect		@ Carrega a base do vetor de alarmes
+
+	ldr r3, =system_time		@ Carrega o tempo do sistema
+	ldr r3, [r3]
+
+	@ Inicialização do for
+	mov r0, #0					@ Inicializa o contador
+	for_1:
+		cmp r0, r1				@ Compara contador com tamanho do vetor
+		bhs end_for_1			@ Salta caso r0 >= r1
+	@ Corpo do for
+		ldr r4, [r2], #4		@ Carrega o tempo na posicao atual do vetor
+		ldr r5, [r2]			@ Carrega o endereco da funcao
+
+		if_1:
+			cmp r3, r4			@ Compara tempo atual com tempo do vetor
+			bne end_if_1		@ Pula o if se r3 != r4
+			@ if (r3 == r4)
+			stmfd sp!, {r0-r3}	@ Salva o contexto
+			@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Mudar modo
+			blx r5				@ Pula para o codigo do usuario
+			ldmfd sp!, {r0-r3}	@ Recupera o contexto
+			mov r5, #0			@ Coloca o valor 0 em r5
+			str r5, [r2]		@ Marca a funcao ja chamada
+		end_if_1:
+		add r2, r2, #4			@ Incrementa a posicao do vetor
+	@ Passo
+		add r0, r0, #1			@ Incrementa o contador
+		b for_1
+
+	end_for_1:
+
+	@ Chama uma rotina para retirar os alarmes que foram usados
+	ldr r0, =alarms_vect		@ Passa o endereco do vetor
+	ldr r1, =active_alarms		@ Passa o endereco do tamanho do vetor
+	bl vector_rectifier
+
+		ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
+
+
+callbacks_handler:
+	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
+
+
+
+	ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
+
+vector_rectifier:				@ (r0) : struct			vetor
+								@ (r1) : unsigned int* 	tam
+	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
+
+	@ Inicializacao do for
+		mov r2, #0				@ Contador: i = 0
+		ldr r4, [r1]			@ Tamanho mutavel do vetor
+		mov r5, r4				@ Tamanho inicial fixo do vetor
+		mov r6, r0				@ Copia o endereco do vetor em um auxiliar
+	for_2:
+		cmp r2, r5				@ Compara o contador com o tamanho fixo
+		bhs end_for_2			@ Salta para o fim se acabou
+	@ Corpo
+		ldr r8, [r0, #4]		@ Carrega o endereco da funcao
+		if_2:
+			cmp r8, #0			@ Compara o endereco com 0
+			beq else_if_2		@ Se for igual salta para o else,
+								@ se for diferente, reordena o vetor
+			@ if (r8 != 0)
+			ldr r7, [r0]		@ Carrega o valor a primeira posicao da struct
+			str r7, [r6], #4	@ Salva na posicao auxiliar a primeira parte da struct
+			str r8, [r6], #4	@ Salva na posicao auxiliar a segunda parte
+			b end_if_2			@ Salta para o fim do if
+		else_if_2:
+			sub r4, r4, #1		@ Subtrai o tamanho do vetor pois encontrou
+								@ uma marcacao com o valor 0
+
+		end_if_2:
+		add r0, r0, #8			@ Incrementa a posicao atual do vetor
+	@ Passo
+		add r2, r2, #1			@ Incrementa o contador
+		b for_2
+
+	end_for_2:
+
+	str r4, [r1]				@ Guarda o novo tamanho do vetor no endereco apropriado
+	ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
+
 SVC_HANDLER:
 	stmfd sp!, {r1-r12, lr}
+
+	msr CPSR_c, #SVC_MODE_I_0_F_0	@ SVC mode, interrupcoes abilitadas
 
 	sub r7, r7, #16				@ Subtrai o valor da syscall de r7
 	ldr lr, =end_svc_handler	@ Carrega em lr o valor da posicao
@@ -210,9 +321,8 @@ SVC_HANDLER:
 
 
 
-read_sonar:						@ (r0) : unsigned char 	sonar_id, 
+read_sonar:						@ (r0) : unsigned char 		sonar_id, 
 								@ (r1) : unsigned short* 	dist
-
 	stmfd sp!, {r4-r12, lr}
 
 	@ Confere se o sonar e valido
@@ -236,12 +346,18 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 	@ TRIGGER <= 0; Delay
 	bic r2, #0b10				@ Limpa o Trigger
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
+
+	stmfd sp!, {r2,r3}			@ Salva os registradores caller-save
 	bl delay_sonar				@ Salta para o loop de espera
+	ldmfd sp!, {r2,r3}			@ Recupera os registradores
 
 	@ TRIGGER <= 1; Delay
 	orr r2, #0b10				@ Adiciona o valor 1 bit do trigger
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
-	bl delay_sonar
+
+	stmfd sp!, {r2,r3}			@ Salva os registradores caller-save
+	bl delay_sonar				@ Salta para o loop de espera
+	ldmfd sp!, {r2,r3}			@ Recupera os registradores
 
 	@ TRIGGER <= 0;
 	bic r2, #0b10				@ Limpa o Trigger
@@ -254,7 +370,10 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 		cmp r2, #1
 		@ Nao
 			@ Delay
+		stmfd sp!, {r3}			@ Salva o resgistrador caller-save
 		blne delay_sonar		@ Chama o delay enquanto flag != 1
+		ldmfd sp!, {r3}			@ Recupera o contexto
+
 		bne loop_flag			@ Repete o loop
 
 	@ SIM
@@ -293,11 +412,13 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
 	bhi end_register_proximity_callback
 	
 	@ Corpo da funcao
-    ldr 	r6, =callbacks_vect
-    add 	r6, r6, r3, lsl #3
-    strh 	r0, [r6], #2
-    strh 	r1, [r6], #2
-    str 	r2, [r6]
+    ldr 	r6, =callbacks_vect		@ Carrega a base do vetor de callbacks
+    add 	r6, r6, r3, lsl #3		@ Faz um deslocamento considerando a
+    								@ quantidade de elementos no vetor e
+    								@ o tamanho de cada posicao do vetor
+    strh 	r0, [r6], #2			@ Guarda o id do sonar
+    strh 	r1, [r6], #2			@ Guarda a distancia limite
+    str 	r2, [r6]				@ Guarda o endereco da funcao a ser chamada
 
 
     @ Incremento contador de alarmes
@@ -305,7 +426,9 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
     @ Grava de volta o contador incrementado
     str r3,[r5]
 
+    @ Retorna 0 indicando sucesso
 	mov r0, #0
+
 	end_register_proximity_callback:
 		ldmfd sp!, {r4-r12, pc}
 
@@ -366,7 +489,7 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 	stmfd sp!, {r4-r12, lr}
 
 	@ Confere se as duas velocidades sao validas, retornando em r0
-	@ -1 caso a primeira seja invalida e -2 caso a segunda
+	@ -1 caso a primeira seja invalida e -2 caso a segunda seja invalida
 	cmp r0, #0b111111
 	movhi r0, #0
 	subhi r0, r0, #1
@@ -423,11 +546,12 @@ set_alarm:						@ (r0) : void (*f)(),
 								@ (r1) : unsigned int time
 	stmfd sp!, {r4-r12, lr}
 
-	@ Conferir se os argumentos são válidos
+	@ Confere se o numero de alarmes ativos e menor que o maximo possivel
 	ldr r2, =MAX_ALARMS
 	ldr r4, =active_alarms
 	ldr r3, [r4]
 	cmp r3, r2
+	@ Salta para o fim retornando -1 caso tenha extrapolado limite de alarmes
 	movhs r0, #0
 	subhs r0, r0, #1
 	bhs end_set_alarm
