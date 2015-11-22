@@ -30,7 +30,7 @@ void get_mins_reading_all(unsigned short * l, unsigned short * r);
 
 void stop();
 
-void test_all_movements(unsigned char vel);
+void test_all_movements();
 
 
 void swerve(unsigned short s3, unsigned short s4);
@@ -39,14 +39,18 @@ void folow_wall();
 
 void search_wall();
 
+void nana();
+
 /* Função principal */
 void _start(void) {
+	add_alarm(nana, 1);
+	add_alarm(nana, 1);
+	add_alarm(nana, 2);
 	/* Loop principal */
 	do{
-		set_motor_speed(0,10);
-		set_motor_speed(1,10);
+
 	}while(1);
-	
+	set_motors_speed(10,10);
 }
 /* Spend some time doing nothing. */
 void delay()
@@ -198,7 +202,7 @@ void stop(){
 	estate = S;
 }
 
-void test_all_movements(unsigned char vel){
+void test_all_movements(){
 	go_front(VEL);
 	delay();
 	turn_left(VEL);
@@ -225,3 +229,6 @@ void test_all_movements(unsigned char vel){
 	delay();
 }
 
+void nana() {
+
+}
