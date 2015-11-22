@@ -183,17 +183,19 @@ IRQ_HANDLER:
 
 SVC_HANDLER:
 	stmfd sp!, {r1-r12, lr}
-	@ Habilitar/Desabilitar interrupcoes
 
-	sub r7, r7, #16
-	ldr lr, =end_svc_handler
-	add pc, pc, r7, lsl #2
+	sub r7, r7, #16				@ Subtrai o valor da syscall de r7
+	ldr lr, =end_svc_handler	@ Carrega em lr o valor da posicao
+								@ para retornar apos tratar a syscall
+	add pc, pc, r7, lsl #2		@ Faz um deslocamento em pc para pular para
+								@ a posicao correta no vetor de rotinas
 
 	@ Apesar de parecer inútil, esse comando 
 	@ é necessário para o salto na intstrução 
 	@ anterior dar certo
 	mov r0, r0 
 	
+	@ Vetor de rotinas que cuidam das varias syscalls
 	b read_sonar
 	b register_proximity_callback 
 	b set_motor_speed 
@@ -213,7 +215,7 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 
 	stmfd sp!, {r4-r12, lr}
 
-	@ Conferir se os argumentos são válidos
+	@ Confere se o sonar e valido
 	cmp r0, #0b1111
 	movhi r0, #0
 	subhi r0, r0, #1
@@ -232,9 +234,9 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
 
 	@ TRIGGER <= 0; Delay
-	bic r2, #0b10			@ Limpa o Trigger
+	bic r2, #0b10				@ Limpa o Trigger
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
-	bl delay_sonar			@ Salta para o loop de espera
+	bl delay_sonar				@ Salta para o loop de espera
 
 	@ TRIGGER <= 1; Delay
 	orr r2, #0b10				@ Adiciona o valor 1 bit do trigger
@@ -242,18 +244,18 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 	bl delay_sonar
 
 	@ TRIGGER <= 0;
-	bic r2, #0b10			@ Limpa o Trigger
+	bic r2, #0b10				@ Limpa o Trigger
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
 
 	@ FLAG == 1 ?
 	loop_flag:
-		ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de DR
-		and r2, r2, #1
+		ldr r2, [r3, #GPIO_DR]	@ Carrega Valor de DR
+		and r2, r2, #1			@ Compara flag com 1
 		cmp r2, #1
 		@ Nao
 			@ Delay
-		blne delay_sonar
-		bne loop_flag
+		blne delay_sonar		@ Chama o delay enquanto flag != 1
+		bne loop_flag			@ Repete o loop
 
 	@ SIM
 		@ Distancia <= Sonar_Data
@@ -261,7 +263,7 @@ read_sonar:						@ (r0) : unsigned char 	sonar_id,
 	lsl r2, #14					@ Desloca os bits de r2 para esquerda e depois para
 	lsr r2, #20					@ direita para manter apenas os bits da distancia
 	
-	mov r0, r2
+	mov r0, r2					@ Move a distancia para r0
 
 	end_read_sonar:
 		ldmfd sp!, {r4-r12, pc}
@@ -291,14 +293,15 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
 	bhi end_register_proximity_callback
 	
 	@ Corpo da funcao
+    ldr r6, =callbacks_vect
+    add r6, r6, r3, lsl #3
+    str r1, [r6], #4
+    str r0, [r6]
 
-	@ Incrementa o contador
-	add r3, r3, #1
-	@ Grava de volta o contador incrementado
-	str r3,[r5]
-
-
-
+    @ Incremento contador de alarmes
+    add r3, r3, #1
+    @ Grava de volta o contador incrementado
+    str r3,[r5]
 
 	mov r0, #0
 	end_register_proximity_callback:
@@ -326,22 +329,30 @@ set_motor_speed:				@ (r0) : unsigned char 	id,
 	bhi end_set_motor_speed
 	
 	@ Corpo da funcao
-	@ @ @ @ @ @ @ @ @ 
+	@ @ @ @ @ @ @ @ @
+
+	@ Carrega o valor de DR
 	ldr	r3, =GPIO_BASE
 	ldr r2, [r3, #GPIO_DR]
 
+	@ Compara com zero para saber o motor
 	cmp r0, #0
 
+	@ Modifica apenas os bits correspondente ao motor correto
+	@ fazendo um bic com uma mascara e orr para modificar
 	biceq r2, #(0b111111<<19)
 	orreq r2, r1, lsl #19
 	bicne r2, #(0b111111<<26)
 	orrne r2, r1, lsl #26
 
 
-	str	r2, [r3, #GPIO_DR] 
+	@ Guarda o valor de DR
+	str	r2, [r3, #GPIO_DR]
 
+	@ Realiza uma espera para se ter certeza que foi escrito no motor
 	bl delay_100
 
+	@ Move o valor 0 para r0 identificando a corretude da syscall
 	mov r0, #0
 
 	end_set_motor_speed:
@@ -352,7 +363,8 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 								@ (r1) : unsigned char 	spd_m1
 	stmfd sp!, {r4-r12, lr}
 
-	@ Conferir se os argumentos são válidos
+	@ Confere se as duas velocidades sao validas, retornando em r0
+	@ -1 caso a primeira seja invalida e -2 caso a segunda
 	cmp r0, #0b111111
 	movhi r0, #0
 	subhi r0, r0, #1
@@ -361,33 +373,36 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 	movhi r0, #0
 	subhi r0, r0, #2
 	bhi end_set_motors_speed
+
 	@ Corpo da funcao
 	@ @ @ @ @ @ @ @ @ 
 
+	@ Carrega o valor de DR
 	ldr	r3, =GPIO_BASE
 	ldr r2, [r3, #GPIO_DR]
 
+	@ Escreve as duas velocidades, uma de cada vez, fazendo bic
+	@ com uma mascara e orr para modificar apenas o necessario
 	bic r2, #(0b111111<<19)
 	orr r2, r0, lsl #19
 	bic r2, #(0b111111<<26)
 	orr r2, r1, lsl #26
 
-
+	@ Guarda o valor em DR e realiza uma espera
 	str	r2, [r3, #GPIO_DR] 
-
 	bl delay_100
 
-
+	@ Move 0 para r0 confirmando a validade da syscall
 	mov r0, #0
+
 	end_set_motors_speed:
 		ldmfd sp!, {r4-r12, pc}
 
 
 get_time:						@ 	Nao tem parametros
-
 	stmfd sp!, {r4-r12, lr}
 
-	ldr r0, =system_time
+	ldr r0, =system_time		@ Pega o tempo do sistema e retorna para o usuario
 	ldr r0, [r0]
 
 	ldmfd sp!, {r4-r12, pc}
@@ -396,8 +411,8 @@ get_time:						@ 	Nao tem parametros
 set_time:						@ 	(r0) : unsigned int 	t
 	stmfd sp!, {r4-r12, lr}
 
-	ldr r1, =system_time
-	str r0, [r1]
+	ldr r1, =system_time		@ Carrega o endereco da variavel do tempo do sistema
+	str r0, [r1]				@ Guarda o novo valor
 
 	ldmfd sp!, {r4-r12, pc}
 
@@ -420,70 +435,21 @@ set_alarm:						@ (r0) : void (*f)(),
 	movls r0, #0
 	subls r0, r0, #2
 	bls end_set_alarm
-	
+
 	@ Corpo da funcao
-	@ Incremento contador de alarmes
-	add r3, r3, #1
-	@ Grava de volta o contador incrementado
-	str r3,[r4]
+    ldr r5, =alarms_vect
+    add r5, r5, r3, lsl #3
+    str r1, [r5], #4
+    str r0, [r5]
 
+    @ Incremento contador de alarmes
+    add r3, r3, #1
+    @ Grava de volta o contador incrementado
+    str r3,[r4]
 
-
-
-
-
-	mov r0, #0
-	end_set_alarm:
-		ldmfd sp!, {r4-r12, pc}
-
-
-
-
-
-.data
-system_time:
-.word 0x0
-
-@ Alarmes
-.set MAX_ALARMS, 0x1
-
-active_alarms:
-.word 0x0
-
-alarms_vect:
-.skip MAX_ALARMS
-
-@ Callbacks
-.set MAX_CALLBACKS, 0x8
-
-active_callbacks:
-.word 0x0
-
-callbacks_vect:
-.skip MAX_CALLBACKS
-
-@ Declaração das Stacks
-
-.set DEFAULT_STACK_SIZE, 	0x100
-
-.set IRQ_STACK_SIZE, 		DEFAULT_STACK_SIZE
-.set SVC_STACK_SIZE, 		DEFAULT_STACK_SIZE
-.set SYS_STACK_SIZE, 		DEFAULT_STACK_SIZE
-
-
-STACK_IRQ_END: 
-.skip IRQ_STACK_SIZE
-STACK_IRQ_BASE:
-
-STACK_SYS_END: 
-.skip SYS_STACK_SIZE
-STACK_SYS_BASE:
-
-STACK_SVC_END: 
-.skip SVC_STACK_SIZE
-STACK_SVC_BASE:
-
-.text
+    mov r0, #0
+    end_set_alarm:
+            ldmfd sp!, {r4-r12, pc}
 
 delay_100:
 stmfd sp!, {r4, lr}
@@ -491,7 +457,7 @@ stmfd sp!, {r4, lr}
 	mov r4, #0
 	loop_delay_1:
 		cmp r4, #100
-		add r4, r4, #100
+		add r4, r4, #1
 	bhs loop_delay_1
 
 ldmfd sp!, {r4, pc}
@@ -502,7 +468,7 @@ stmfd sp!, {r4, lr}
 	mov r4, #0
 	loop_delay_2:
 		cmp r4, #2048
-		add r4, r4, #100
+		add r4, r4, #1
 	bhs loop_delay_2
 
 ldmfd sp!, {r4, pc}
@@ -514,3 +480,50 @@ FIQ_ABORT_HANDLER:
 limbo_42:
 	b limbo_42
 
+
+.data
+
+@ Tempo do sistema
+system_time:
+.word 0x0
+ 
+@ Alarmes
+.set MAX_ALARMS, 0x8
+.set ALARMS_SIZE, 0x8
+ 
+active_alarms:
+.word 0x0
+ 
+alarms_vect:
+.space MAX_ALARMS * ALARMS_SIZE
+ 
+@ Callbacks
+.set MAX_CALLBACKS, 0x8
+.set CALLBACKS_SIZE, 0xC
+ 
+active_callbacks:
+.word 0x0
+ 
+callbacks_vect:
+.space MAX_CALLBACKS * CALLBACKS_SIZE
+ 
+@ Declaração das Stacks
+ 
+.set DEFAULT_STACK_SIZE,        0x100
+ 
+.set IRQ_STACK_SIZE,            DEFAULT_STACK_SIZE
+.set SVC_STACK_SIZE,            DEFAULT_STACK_SIZE
+.set SYS_STACK_SIZE,            DEFAULT_STACK_SIZE
+ 
+ 
+STACK_IRQ_END:
+.skip IRQ_STACK_SIZE
+STACK_IRQ_BASE:
+ 
+STACK_SYS_END:
+.skip SYS_STACK_SIZE
+STACK_SYS_BASE:
+ 
+STACK_SVC_END:
+.skip SVC_STACK_SIZE
+STACK_SVC_BASE:
