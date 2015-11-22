@@ -293,10 +293,12 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
 	bhi end_register_proximity_callback
 	
 	@ Corpo da funcao
-    ldr r6, =callbacks_vect
-    add r6, r6, r3, lsl #3
-    str r1, [r6], #4
-    str r0, [r6]
+    ldr 	r6, =callbacks_vect
+    add 	r6, r6, r3, lsl #3
+    strh 	r0, [r6], #2
+    strh 	r1, [r6], #2
+    str 	r2, [r6]
+
 
     @ Incremento contador de alarmes
     add r3, r3, #1
