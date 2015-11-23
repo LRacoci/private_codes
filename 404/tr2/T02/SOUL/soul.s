@@ -1,5 +1,22 @@
+@ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @
+@																		@
+@ 	Trabalho de MC404													@
+@	-	#	-	#	-	#	-	#	-									@
+@																		@
+@	Autores:															@
+@		Nome: 	Luiz Fernando Rodrigues da Fonseca						@
+@		RA:		156475													@
+@																		@
+@		Nome: 	Lucas Alves Racoci										@
+@		RA: 	156331													@
+@																		@
+@																		@
+@																		@
+@ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @
+
+
+@ Endereco de inicio do codigo do usuario
 .set USER_START_POSITION, 	0x77802000
-.set STACKS_START_POSITION, 0x77852000
 
 .org 0x0
 
@@ -247,6 +264,7 @@ alarms_handler:
 
 callbacks_handler:
 	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
+
 
 
 
@@ -605,6 +623,9 @@ DATA_ABORT_HANDLER:
 FIQ_ABORT_HANDLER:
 limbo_42:
 	b limbo_42
+
+@ Secao de Dados
+@ @ @ @ @ @ @ @ @ @ @ @
 
 
 .data
