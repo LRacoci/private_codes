@@ -3,8 +3,8 @@
 #define LIMITE 1024
 #define AVG_LIMITE_PAREDE 512
 #define STDEV_LIMITE_PAREDE 256
-#define TURN_VEL 2
-#define VEL 5
+#define TURN_VEL 10
+#define VEL 15
 
 #define ABSOLUTE(x) ((x) > 0) ? (x): (-(x))
 /* Define o estado do robo */
@@ -43,14 +43,12 @@ void nana();
 
 /* Função principal */
 void _start(void) {
-	add_alarm(nana, 1);
-	add_alarm(nana, 1);
-	add_alarm(nana, 2);
+	register_proximity_callback(3,LIMITE,nana);
+	register_proximity_callback(4,LIMITE,nana);
 	/* Loop principal */
 	do{
-
+		
 	}while(1);
-	set_motors_speed(10,10);
 }
 /* Spend some time doing nothing. */
 void delay()

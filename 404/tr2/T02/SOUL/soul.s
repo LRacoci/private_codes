@@ -79,6 +79,7 @@ RESET_HANDLER:
 		msr CPSR_c, SVC_MODE_I_1_F_1 	@ SVC mode, interrupcoes desabilitadas
 		ldr sp, =STACK_SVC_BASE			@ Inicializa pilha sp_SVC
 
+
 	set_gpt:
 		@ Constantes para os enderecos do GPT
 		.set GPT_BASE, 			0x53FA0000
@@ -102,7 +103,7 @@ RESET_HANDLER:
 
 		@ Colocar em GPT_COR1 o valor que gera 
 		@ a interrupção durante a contagem
-		ldr r0, =100
+		ldr r0, =1
 		str	r0, [r1, #GPT_OCR1]
 
 		@ Habilitar a interrupção Output Compare Channel 1
@@ -177,8 +178,9 @@ RESET_HANDLER:
 		mov pc, r1						@ Pula para a posicao de inicio do usuario
 
 IRQ_HANDLER:
-	stmfd sp!, {r0-r12, lr}
-
+	stmfd sp!, {r0-r12, lr}				@ Salva contexto
+	mrs r11, SPSR					 	@ Move registrador de status de retorno
+	stmfd sp!, {r11}					@ Guarda na pilha
 	
 
 	@ Informa ao GPT que o  processador 
@@ -194,30 +196,46 @@ IRQ_HANDLER:
 	@ Carega o tempo do sistema
 	ldr r0, [r2]
 
-	@ Tratamento de alarmes e callbacks
-	stmfd sp!, {r0, r2} 	@ Salva variáveis
-	@ Tratamento dos alarmes
-	bl alarms_handler
-	@ Tratamento das Callbacks
-	bl callbacks_handler
-	ldmfd sp!, {r0, r2}	@ Recupera contexto
-
-	
 	@ Incrementa o tempo do sistema
 	add r0, r0, #1
 
 	@ Grava de volta o tempo do sistema incrementado
 	str r0, [r2]
+
+	@ Tratamento de alarmes e callbacks
+	mrs r3, CPSR 						@ Salva modo atual pra voltar
 	
+	stmfd sp!, {r0} 				@ Salva variáveis
+	
+		@ Mudar para o modo usuario habilitando interrupcoes
+		msr CPSR_c, USR_MODE_I_0_F_0 
+		
+		stmfd sp!, {r3}					@ Salva contexto
+
+			@ Tratamento dos alarmes em modo usuario
+			bl alarms_handler
+			@ Tratamento das Callbacks em modo usuario
+			bl callbacks_handler
+
+		ldmfd sp!, {r3}					@ Recupera contexto
+		
+		@ Voltar do modo usuario
+		mov r0, r3						@ Status anterior ao modo USER 
+		mov r7, #23						@ Identifica a syscall
+		svc 0x0
+
+	ldmfd sp!, {r0}						@ Recupera contexto
 	
 
-	ldmfd sp!, {r0-r12, lr}
-	@ Ajusta o lr antes de retornar
-	sub 	lr, lr, #4
+	ldmfd 	sp!, {r11}					@ Desempilha status anterior
+	msr SPSR, r11						@ Recupera o status anterior
+	ldmfd sp!, {r0-r12, lr}				@ Recupera contexto
+	
+	sub 	lr, lr, #4					@ Ajusta o lr antes de retornar
 	movs 	pc, lr
 
 alarms_handler:
-	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
+stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 
 	ldr r1, =active_alarms		@ Carrega o numero de alarmes
 	ldr r1, [r1]
@@ -237,15 +255,16 @@ alarms_handler:
 		ldr r5, [r2]			@ Carrega o endereco da funcao
 
 		if_1:
+			cmp r5, #0			@ Ve se a funcao ja foi marcada
+			beq end_if_1		@ Salta para o fim caso verdade
 			cmp r3, r4			@ Compara tempo atual com tempo do vetor
 			bne end_if_1		@ Pula o if se r3 != r4
-			@ if (r3 == r4)
+			@ if (r5 != 0 && r3 == r4)
+			mov r5, #0			@ Coloca o valor 0 em r5
+			str r5, [r2]		@ Marca a funcao a ser chamada
 			stmfd sp!, {r0-r3}	@ Salva o contexto
-			@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Mudar modo
 			blx r5				@ Pula para o codigo do usuario
 			ldmfd sp!, {r0-r3}	@ Recupera o contexto
-			mov r5, #0			@ Coloca o valor 0 em r5
-			str r5, [r2]		@ Marca a funcao ja chamada
 		end_if_1:
 		add r2, r2, #4			@ Incrementa a posicao do vetor
 	@ Passo
@@ -259,14 +278,57 @@ alarms_handler:
 	ldr r1, =active_alarms		@ Passa o endereco do tamanho do vetor
 	bl vector_rectifier
 
-		ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
+ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
 
 
 callbacks_handler:
 	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
 
+	ldr r2, =active_callbacks	@ Carrega o numero de callbacks
+	ldr r2, [r2]
 
+	ldr r3, =callbacks_vect		@ Carrega a base do vetor de callbacks
 
+	@ Inicialização do for
+	mov r8, #0					@ Inicializa o contador
+	for_3:
+		cmp r8, r2				@ Compara contador com tamanho do vetor
+		bhs end_for_3			@ Salta caso r8 >= r2
+	@ Corpo do for
+		ldrh r0, [r3], #2		@ Carrega o id do sensor
+		ldrh r5, [r3], #2		@ Carrega a distancia limite
+		ldr r6, [r3]			@ Carrega o endereco da funcao
+
+		cmp r6, #0				@ Ve se a funcao ja foi marcada
+		beq end_if_3			@ Salta para o fim caso verdade
+
+		mov r7, #16				@ Move o identificador da syscall read_sonar
+		stmfd sp!, {r2,r3}		@ Salva o contexto
+		svc 0x0
+		ldmfd sp!, {r2,r3}		@ Recupera o contexto
+
+		if_3:
+			cmp r0, r5			@ Compara tempo atual com tempo do vetor
+			bhi end_if_3		@ Pula o if se r0 > r5
+			@ if (r0 <= r5)
+			mov r9, r6			@ Copia o endereco de salto da funcao
+			mov r6, #0			@ Coloca o valor 0 em r6
+			str r6, [r3]		@ Marca a funcao a ser chamada
+			stmfd sp!, {r0-r3}	@ Salva o contexto
+			blx r9				@ Pula para o codigo do usuario
+			ldmfd sp!, {r0-r3}	@ Recupera o contexto
+		end_if_3:
+		add r3, r3, #4			@ Incrementa a posicao do vetor
+	@ Passo
+		add r8, r8, #1			@ Incrementa o contador
+		b for_3
+
+	end_for_3:
+
+	@ Chama uma rotina para retirar os callbacks que foram usados
+	ldr r0, =callbacks_vect			@ Passa o endereco do vetor
+	ldr r1, =active_callbacks		@ Passa o endereco do tamanho do vetor
+	bl vector_rectifier
 
 	ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
 
@@ -309,7 +371,11 @@ vector_rectifier:				@ (r0) : struct			vetor
 	ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
 
 SVC_HANDLER:
-	stmfd sp!, {r1-r12, lr}
+	stmfd sp!, {r1-r12, lr}				@ Salva contexto
+	mrs r11, SPSR					 	@ Move registrador de status de retorno
+	stmfd sp!, {r11}					@ Guarda na pilha
+
+
 
 	msr CPSR_c, #SVC_MODE_I_0_F_0	@ SVC mode, interrupcoes abilitadas
 
@@ -332,9 +398,13 @@ SVC_HANDLER:
 	b get_time
 	b set_time
 	b set_alarm
+	@ Syscalls Personalizadas
+	b back_to_r0
 
 	end_svc_handler:
-		ldmfd 	sp!, {r1-r12, lr}
+		ldmfd 	sp!, {r11}				@ Desempilha status anterior
+		msr SPSR, r11					@ Recupera status anterior
+		ldmfd 	sp!, {r1-r12, lr}		@ Recupera contexto
 		movs 	pc, lr
 
 
@@ -342,7 +412,7 @@ SVC_HANDLER:
 read_sonar:						@ (r0) : unsigned char 		sonar_id, 
 								@ (r1) : unsigned short* 	dist
 	stmfd sp!, {r4-r12, lr}
-
+	msr CPSR_c, #SVC_MODE_I_1_F_1 @ Desabilita interrupcoes durante a leitura do sonar
 	@ Confere se o sonar e valido
 	cmp r0, #0b1111
 	movhi r0, #0
@@ -383,9 +453,9 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 
 	@ FLAG == 1 ?
 	loop_flag:
-		ldr r2, [r3, #GPIO_DR]	@ Carrega Valor de DR
-		and r2, r2, #1			@ Compara flag com 1
-		cmp r2, #1
+		ldr r2, [r3, #GPIO_DR]	@ Carrega Valor de PSR
+		and r2, r2, #1			@ Isola a flag
+		cmp r2, #1				@ Compara flag com 1
 		@ Nao
 			@ Delay
 		stmfd sp!, {r3}			@ Salva o resgistrador caller-save
@@ -396,13 +466,14 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 
 	@ SIM
 		@ Distancia <= Sonar_Data
-	ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de DR
+	ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de PSR
 	lsl r2, #14					@ Desloca os bits de r2 para esquerda e depois para
 	lsr r2, #20					@ direita para manter apenas os bits da distancia
 	
 	mov r0, r2					@ Move a distancia para r0
 
 	end_read_sonar:
+		msr CPSR_c, #SVC_MODE_I_0_F_0 @ Reabilita interrupcoes
 		ldmfd sp!, {r4-r12, pc}
 
 
@@ -595,25 +666,35 @@ set_alarm:						@ (r0) : void (*f)(),
     end_set_alarm:
             ldmfd sp!, {r4-r12, pc}
 
+
+back_to_r0:					@ 	(r0) : status register save 	SPSR
+	@ Ainda em modo SUPERVISOR, desempilha os registradores salvos no inicio
+	ldmfd sp!, {r11}		
+	ldmfd sp!, {r1-r12, lr}
+	@ Grava no registrador de status de retorno (status save) o argumento da syscall
+	msr SPSR, r0 
+	movs pc, lr 			@ Retorna para o lr que foi desempilhado (anterior a syscall)
+
 delay_100:
 stmfd sp!, {r4, lr}
 
 	mov r4, #0
 	loop_delay_1:
-		cmp r4, #100
 		add r4, r4, #1
-	bhs loop_delay_1
+		cmp r4, #0x100
+	bls loop_delay_1
 
 ldmfd sp!, {r4, pc}
 
 delay_sonar:
 stmfd sp!, {r4, lr}
 
-	mov r4, #0
+	mov r4, #0x1400
 	loop_delay_2:
-		cmp r4, #2048
-		add r4, r4, #1
-	bhs loop_delay_2
+		sub r4, r4, #1
+		cmp r4, #0
+	bhi loop_delay_2
+flag_42:
 
 ldmfd sp!, {r4, pc}
 
@@ -656,7 +737,7 @@ callbacks_vect:
  
 @ Declaração das Stacks
  
-.set DEFAULT_STACK_SIZE,        0x100
+.set DEFAULT_STACK_SIZE,        0x200
  
 .set IRQ_STACK_SIZE,            DEFAULT_STACK_SIZE
 .set SVC_STACK_SIZE,            DEFAULT_STACK_SIZE

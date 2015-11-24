@@ -67,7 +67,9 @@ run_gdb_player: disk.img
 
 # Roda com suporte ao gdb
 gdb: disk.img
-	arm-eabi-gdb SOUL.x
+	arm-eabi-gdb SOUL.x --command=gdb_initialization
+gdb_loco: disk.img
+	arm-eabi-gdb LOCO.x --command=gdb_initialization
 
 # Abre a sessao do player
 player:
