@@ -103,7 +103,7 @@ RESET_HANDLER:
 
 		@ Colocar em GPT_COR1 o valor que gera 
 		@ a interrupção durante a contagem
-		ldr r0, =1
+		ldr r0, =100
 		str	r0, [r1, #GPT_OCR1]
 
 		@ Habilitar a interrupção Output Compare Channel 1
@@ -255,6 +255,7 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 		ldr r5, [r2]			@ Carrega o endereco da funcao
 
 		if_1:
+			mov r6, r5			@ Copia o endereco da funcao
 			cmp r5, #0			@ Ve se a funcao ja foi marcada
 			beq end_if_1		@ Salta para o fim caso verdade
 			cmp r3, r4			@ Compara tempo atual com tempo do vetor
@@ -263,7 +264,7 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 			mov r5, #0			@ Coloca o valor 0 em r5
 			str r5, [r2]		@ Marca a funcao a ser chamada
 			stmfd sp!, {r0-r3}	@ Salva o contexto
-			blx r5				@ Pula para o codigo do usuario
+			blx r6				@ Pula para o codigo do usuario
 			ldmfd sp!, {r0-r3}	@ Recupera o contexto
 		end_if_1:
 		add r2, r2, #4			@ Incrementa a posicao do vetor
