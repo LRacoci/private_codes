@@ -39,7 +39,7 @@ all: disk.img
 SOUL.x: $(SOUL_OBJS)
 	$(LD) $^ -o $@ $(LD_FLAGS) --section-start=.iv=0x778005e0 -Ttext=0x77800700 -Tdata=0x77801800 -e 0x778005e0
 
-LOCO.x: loco.o bico.o
+LOCO.x: ronda.o bico.o
 	$(LD) $^ -o $@ $(LD_FLAGS) -Ttext=0x77802000 
 
 disk.img: SOUL.x LOCO.x
@@ -56,13 +56,10 @@ run_flags: disk.img
 run: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img 
 
-run_gdb: disk.img
-	arm-sim --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,cp15,sd
-
-run_gdb_player_flags: disk.img
+run_gdb_flags: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g --debug=core,gpt,tzic,cp15,sd
 
-run_gdb_player: disk.img
+run_gdb: disk.img
 	armsim_player --rom=/home/specg12-1/mc404/simulador/simulador_player/bin/dumboot.bin --sd=disk.img -g
 
 # Roda com suporte ao gdb
