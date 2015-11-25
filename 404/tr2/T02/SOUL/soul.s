@@ -1,6 +1,6 @@
 @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @ @
 @																		@
-@ 	Trabalho de MC404													@
+@ 	Trabalho 2 de MC404 - Sistema de software do Uoli					@
 @	-	#	-	#	-	#	-	#	-									@
 @																		@
 @	Autores:															@
@@ -95,7 +95,7 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			0x330
+		.set TIME_SZ,			0x570
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -108,7 +108,7 @@ RESET_HANDLER:
 		ldr r0, =0x0
 		str	r0, [r1, #GPT_PR]
 
-		@ Colocar em GPT_COR1 o valor que gera 
+		@ Colocar em GPT_OCR1 o valor que gera 
 		@ a interrupção durante a contagem
 		ldr r0, =TIME_SZ
 		str	r0, [r1, #GPT_OCR1]
@@ -212,7 +212,7 @@ IRQ_HANDLER:
 	@ Tratamento de alarmes e callbacks
 	mrs r3, CPSR 						@ Salva modo atual pra voltar
 	
-	stmfd sp!, {r0} 				@ Salva variáveis
+	stmfd sp!, {r0} 					@ Salva variáveis
 	
 		@ Mudar para o modo usuario habilitando interrupcoes
 		msr CPSR_c, USR_MODE_I_0_F_0 
@@ -264,17 +264,32 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 		if_1:
 			mov r6, r5			@ Copia o endereco da funcao
 			cmp r5, #0			@ Ve se a funcao ja foi marcada
+								@ como se estivesse finalizada
 			beq end_if_1		@ Pula o if se r5 == 0
+
+			cmp r5, #1			@ Ve se a funcao ja foi marcada
+								@ como se estivesse sendo executada
+			beq end_if_1		@ Pula o if se r5 == 1
+
 			cmp r3, r4			@ Compara tempo atual com tempo do vetor
 			blo end_if_1		@ Pula o if se r3 < r4
-			@ if (r5 != 0 && r3 >= r4)
-			mov r5, #0			@ Coloca o valor 0 em r5
-			str r5, [r2]		@ Marca a funcao a ser chamada
+
+			@ if (r5 != 0 && r3 >= r4 && r5 != 1)
+			mov r5, #1			@ Coloca o valor 1 em r5
+			str r5, [r2]		@ Marca a funcao a ser chamada para que
+								@ ela nao seja chamada na proxima vez
+
 			stmfd sp!, {r0-r3}	@ Salva o contexto
 			blx r6				@ Pula para o codigo do usuario
 			ldmfd sp!, {r0-r3}	@ Recupera o contexto
+
+			mov r5, #0			@ Move o valor 0 para r5
+			str r5, [r2]		@ Marca a funcao que foi chamada dizendon que
+								@ ela ja acabou, e pode ser retirada do vetor
+		
 		end_if_1:
 		add r2, r2, #4			@ Incrementa a posicao do vetor
+	
 	@ Passo
 		add r0, r0, #1			@ Incrementa o iterador
 		b for_1
@@ -302,6 +317,7 @@ callbacks_handler:
 	for_3:
 		cmp r8, r2				@ Compara iterador com tamanho do vetor
 		bhs end_for_3			@ Salta caso r8 >= r2
+
 	@ Corpo do for
 		ldrh r0, [r3], #2		@ Carrega o id do sensor
 		ldrh r5, [r3], #2		@ Carrega a distancia limite
@@ -316,18 +332,22 @@ callbacks_handler:
 		ldmfd sp!, {r2,r3}		@ Recupera o contexto
 
 		if_3:
-			cmp r0, r5			@ Compara distancia atual com distancia do vetor
+			cmp r0, r5			@ Compara tempo atual com tempo do vetor
 			bhi end_if_3		@ Pula o if se r0 > r5
+
 			@ if (r0 <= r5)
 			mov r9, r6			@ Copia o endereco de salto da funcao
 			mov r6, #0			@ Coloca o valor 0 em r6
 			str r6, [r3]		@ Marca a funcao a ser chamada
+			
 			stmfd sp!, {r0-r3}	@ Salva o contexto
 			blx r9				@ Pula para o codigo do usuario
 			ldmfd sp!, {r0-r3}	@ Recupera o contexto
 			str r9, [r3]		@ Desmarca a funcao que foi chamada
+		
 		end_if_3:
 		add r3, r3, #4			@ Incrementa a posicao do vetor
+	
 	@ Passo
 		add r8, r8, #1			@ Incrementa o iterador
 		b for_3
@@ -347,8 +367,10 @@ vector_rectifier:				@ (r0) : struct			vetor
 	for_2:
 		cmp r2, r5				@ Compara o iterador com o tamanho fixo
 		bhs end_for_2			@ Salta para o fim se acabou
+	
 	@ Corpo
 		ldr r8, [r0, #4]		@ Carrega o endereco da funcao
+		
 		if_2:
 			cmp r8, #0			@ Compara o endereco com 0
 			beq else_if_2		@ Se for igual salta para o else,
@@ -358,12 +380,14 @@ vector_rectifier:				@ (r0) : struct			vetor
 			str r7, [r6], #4	@ Salva na posicao auxiliar a primeira parte da struct
 			str r8, [r6], #4	@ Salva na posicao auxiliar a segunda parte
 			b end_if_2			@ Salta para o fim do if
+		
 		else_if_2:
 			sub r4, r4, #1		@ Subtrai o tamanho do vetor pois encontrou
 								@ uma marcacao com o valor 0
 
 		end_if_2:
 		add r0, r0, #8			@ Incrementa a posicao atual do vetor
+	
 	@ Passo
 		add r2, r2, #1			@ Incrementa o iterador
 		b for_2
@@ -643,64 +667,71 @@ set_alarm:						@ (r0) : void (*f)(),
 	ldr r4, =active_alarms
 	ldr r3, [r4]
 	cmp r3, r2
+
 	@ Salta para o fim retornando -1 caso tenha extrapolado limite de alarmes
 	movhs r0, #0
 	subhs r0, r0, #1
 	bhs end_set_alarm
+
+	@ Salta para o fim retornando -2 caso o tempo do sistema
+	@ seja menor ou igual o tempo que ele queira setar
 	ldr r2, =system_time
 	ldr r2, [r2]
-	cmp r1, r2 @ r1 = time; r2 = System Time
+	cmp r1, r2 					@ r1 = time; r2 = System Time
 	movls r0, #0
 	subls r0, r0, #2
 	bls end_set_alarm
 
 	@ Corpo da funcao
-    ldr r5, =alarms_vect
-    add r5, r5, r3, lsl #3
-    str r1, [r5], #4
-    str r0, [r5]
+    ldr r5, =alarms_vect		@ Carrega o endereco do vetor de alarmes
+    add r5, r5, r3, lsl #3		@ Desloca o apontador considerando
+    							@ o numero de alarmes ativos
+    str r1, [r5], #4			@ Guarda o tempo para ser chamado
+    str r0, [r5]				@ Guarda o endereco da funcao a ser chamada
 
     @ Incremento contador de alarmes
     add r3, r3, #1
     @ Grava de volta o contador incrementado
     str r3,[r4]
 
+    @ Move 0 para r0 indicando sucesso
     mov r0, #0
+
     end_set_alarm:
             ldmfd sp!, {r4-r12, pc}
 
 
-back_to_r0:					@ 	(r0) : status register save 	SPSR
+back_to_r0:						@ 	(r0) : status register save 	SPSR
 	@ Ainda em modo SUPERVISOR, desempilha os registradores salvos no inicio
 	ldmfd sp!, {r11}		
 	ldmfd sp!, {r1-r12, lr}
 	@ Grava no registrador de status de retorno (status save) o argumento da syscall
 	msr SPSR, r0 
-	movs pc, lr 			@ Retorna para o lr que foi desempilhado (anterior a syscall)
+	movs pc, lr 				@ Retorna para o lr que foi desempilhado (anterior a syscall)
 
-delay_motors:
-stmfd sp!, {r4, lr}
+delay_motors:					@ 	Nao tem parametros
+	stmfd sp!, {r4, lr}
 
-	mov r4, #0
+	mov r4, #0					@ Inicializa o iterador
 	loop_delay_1:
-		add r4, r4, #1
-		cmp r4, #0x1000
-	bls loop_delay_1
+		add r4, r4, #1			@ Adiciona 1
+		cmp r4, #0x1000			@ Compara com o maximo 0x1000
+	bls loop_delay_1			@ Salta para o inicio caso nao acabou
 
-ldmfd sp!, {r4, pc}
+	ldmfd sp!, {r4, pc}
 
-delay_sonar:
-stmfd sp!, {r4, lr}
+delay_sonar:					@ 	Nao tem parametros
+	stmfd sp!, {r4, lr}
 
-	mov r4, #0x1400
+	mov r4, #0x1400				@ Inicializa o iterador com o valor maximo 0x1400
 	loop_delay_2:
-		sub r4, r4, #1
-		cmp r4, #0
-	bhi loop_delay_2
-flag_42:
+		sub r4, r4, #1			@ Subtrai 1
+		cmp r4, #0				@ Compara com 0
+	bhi loop_delay_2			@ Salta para o inicio caso nao seja 0
 
-ldmfd sp!, {r4, pc}
+	ldmfd sp!, {r4, pc}
 
+@ Interrupcoes nao tratadas
 UNDEFINED_INSTRUCTION:
 INSTRUCTION_ABORT_HANDLER:
 DATA_ABORT_HANDLER:
@@ -721,20 +752,24 @@ system_time:
 @ Alarmes
 .set MAX_ALARMS, 0x8
 .set ALARMS_SIZE, 0x8
- 
+
+@ Numero de alarmes ativos
 active_alarms:
 .word 0x0
- 
+
+@ Vetor de alarmes
 alarms_vect:
 .space MAX_ALARMS * ALARMS_SIZE
  
 @ Callbacks
 .set MAX_CALLBACKS, 0x8
 .set CALLBACKS_SIZE, 0xC
- 
+
+@ Numero de callbacks ativas
 active_callbacks:
 .word 0x0
- 
+
+@ Vetor de callbacks
 callbacks_vect:
 .space MAX_CALLBACKS * CALLBACKS_SIZE
  
@@ -745,8 +780,7 @@ callbacks_vect:
 .set IRQ_STACK_SIZE,            DEFAULT_STACK_SIZE
 .set SVC_STACK_SIZE,            0x300
 .set SYS_STACK_SIZE,            DEFAULT_STACK_SIZE
- 
- 
+
 STACK_IRQ_END:
 .skip IRQ_STACK_SIZE
 STACK_IRQ_BASE:
