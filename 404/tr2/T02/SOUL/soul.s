@@ -95,7 +95,7 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			1600
+		.set TIME_SZ,			0x330
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -316,7 +316,7 @@ callbacks_handler:
 		ldmfd sp!, {r2,r3}		@ Recupera o contexto
 
 		if_3:
-			cmp r0, r5			@ Compara tempo atual com tempo do vetor
+			cmp r0, r5			@ Compara distancia atual com distancia do vetor
 			bhi end_if_3		@ Pula o if se r0 > r5
 			@ if (r0 <= r5)
 			mov r9, r6			@ Copia o endereco de salto da funcao
@@ -567,7 +567,7 @@ set_motor_speed:				@ (r0) : unsigned char 	id,
 	str	r2, [r3, #GPIO_DR]
 
 	@ Realiza uma espera para se ter certeza que foi escrito no motor
-	bl delay_100
+	bl delay_motors
 
 	@ Move o valor 0 para r0 identificando a corretude da syscall
 	mov r0, #0
@@ -607,7 +607,7 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 
 	@ Guarda o valor em DR e realiza uma espera
 	str	r2, [r3, #GPIO_DR] 
-	bl delay_100
+	bl delay_motors
 
 	@ Move 0 para r0 confirmando a validade da syscall
 	mov r0, #0
@@ -678,13 +678,13 @@ back_to_r0:					@ 	(r0) : status register save 	SPSR
 	msr SPSR, r0 
 	movs pc, lr 			@ Retorna para o lr que foi desempilhado (anterior a syscall)
 
-delay_100:
+delay_motors:
 stmfd sp!, {r4, lr}
 
 	mov r4, #0
 	loop_delay_1:
 		add r4, r4, #1
-		cmp r4, #0x100
+		cmp r4, #0x1000
 	bls loop_delay_1
 
 ldmfd sp!, {r4, pc}
@@ -743,7 +743,7 @@ callbacks_vect:
 .set DEFAULT_STACK_SIZE,        0x200
  
 .set IRQ_STACK_SIZE,            DEFAULT_STACK_SIZE
-.set SVC_STACK_SIZE,            DEFAULT_STACK_SIZE
+.set SVC_STACK_SIZE,            0x300
 .set SYS_STACK_SIZE,            DEFAULT_STACK_SIZE
  
  
