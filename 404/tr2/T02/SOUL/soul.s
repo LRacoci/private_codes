@@ -64,6 +64,11 @@ interrupt_vector:
 
 RESET_HANDLER:
 
+    @ Zera o contador
+    ldr r2, =system_time				@ Carrega o endereco da variavel
+    mov r0, #0							@ Move o valor 0 para r0
+    str r0, [r2]						@ Guarda o valor inicializado
+
     @ Set interrupt table base address on coprocessor 15.
     ldr r0, =interrupt_vector
     mcr p15, 0, r0, c12, c0, 0
@@ -89,6 +94,8 @@ RESET_HANDLER:
 		.set GPT_OCR1,			0x10
 		.set GPT_IR,			0xC
 
+		@ Constante do contador de ciclos para gerar uma interrupcao
+		.set TIME_SZ,			1600
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -103,7 +110,7 @@ RESET_HANDLER:
 
 		@ Colocar em GPT_COR1 o valor que gera 
 		@ a interrupção durante a contagem
-		ldr r0, =100
+		ldr r0, =TIME_SZ
 		str	r0, [r1, #GPT_OCR1]
 
 		@ Habilitar a interrupção Output Compare Channel 1
@@ -246,9 +253,9 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 	ldr r3, [r3]
 
 	@ Inicialização do for
-	mov r0, #0					@ Inicializa o contador
+	mov r0, #0					@ Inicializa o iterador
 	for_1:
-		cmp r0, r1				@ Compara contador com tamanho do vetor
+		cmp r0, r1				@ Compara iterador com tamanho do vetor
 		bhs end_for_1			@ Salta caso r0 >= r1
 	@ Corpo do for
 		ldr r4, [r2], #4		@ Carrega o tempo na posicao atual do vetor
@@ -257,10 +264,10 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 		if_1:
 			mov r6, r5			@ Copia o endereco da funcao
 			cmp r5, #0			@ Ve se a funcao ja foi marcada
-			beq end_if_1		@ Salta para o fim caso verdade
+			beq end_if_1		@ Pula o if se r5 == 0
 			cmp r3, r4			@ Compara tempo atual com tempo do vetor
-			bne end_if_1		@ Pula o if se r3 != r4
-			@ if (r5 != 0 && r3 == r4)
+			blo end_if_1		@ Pula o if se r3 < r4
+			@ if (r5 != 0 && r3 >= r4)
 			mov r5, #0			@ Coloca o valor 0 em r5
 			str r5, [r2]		@ Marca a funcao a ser chamada
 			stmfd sp!, {r0-r3}	@ Salva o contexto
@@ -269,7 +276,7 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 		end_if_1:
 		add r2, r2, #4			@ Incrementa a posicao do vetor
 	@ Passo
-		add r0, r0, #1			@ Incrementa o contador
+		add r0, r0, #1			@ Incrementa o iterador
 		b for_1
 
 	end_for_1:
@@ -291,9 +298,9 @@ callbacks_handler:
 	ldr r3, =callbacks_vect		@ Carrega a base do vetor de callbacks
 
 	@ Inicialização do for
-	mov r8, #0					@ Inicializa o contador
+	mov r8, #0					@ Inicializa o iterador
 	for_3:
-		cmp r8, r2				@ Compara contador com tamanho do vetor
+		cmp r8, r2				@ Compara iterador com tamanho do vetor
 		bhs end_for_3			@ Salta caso r8 >= r2
 	@ Corpo do for
 		ldrh r0, [r3], #2		@ Carrega o id do sensor
@@ -318,19 +325,14 @@ callbacks_handler:
 			stmfd sp!, {r0-r3}	@ Salva o contexto
 			blx r9				@ Pula para o codigo do usuario
 			ldmfd sp!, {r0-r3}	@ Recupera o contexto
+			str r9, [r3]		@ Desmarca a funcao que foi chamada
 		end_if_3:
 		add r3, r3, #4			@ Incrementa a posicao do vetor
 	@ Passo
-		add r8, r8, #1			@ Incrementa o contador
+		add r8, r8, #1			@ Incrementa o iterador
 		b for_3
 
 	end_for_3:
-
-	@ Chama uma rotina para retirar os callbacks que foram usados
-	ldr r0, =callbacks_vect			@ Passa o endereco do vetor
-	ldr r1, =active_callbacks		@ Passa o endereco do tamanho do vetor
-	bl vector_rectifier
-
 	ldmfd sp!, {r4-r12, pc} 	@ Recupera Registradores Callee-save
 
 vector_rectifier:				@ (r0) : struct			vetor
@@ -338,12 +340,12 @@ vector_rectifier:				@ (r0) : struct			vetor
 	stmfd sp!, {r4-r12, lr} 	@ Salva Registradores Callee-save
 
 	@ Inicializacao do for
-		mov r2, #0				@ Contador: i = 0
+		mov r2, #0				@ Iterador: i = 0
 		ldr r4, [r1]			@ Tamanho mutavel do vetor
 		mov r5, r4				@ Tamanho inicial fixo do vetor
 		mov r6, r0				@ Copia o endereco do vetor em um auxiliar
 	for_2:
-		cmp r2, r5				@ Compara o contador com o tamanho fixo
+		cmp r2, r5				@ Compara o iterador com o tamanho fixo
 		bhs end_for_2			@ Salta para o fim se acabou
 	@ Corpo
 		ldr r8, [r0, #4]		@ Carrega o endereco da funcao
@@ -363,7 +365,7 @@ vector_rectifier:				@ (r0) : struct			vetor
 		end_if_2:
 		add r0, r0, #8			@ Incrementa a posicao atual do vetor
 	@ Passo
-		add r2, r2, #1			@ Incrementa o contador
+		add r2, r2, #1			@ Incrementa o iterador
 		b for_2
 
 	end_for_2:
