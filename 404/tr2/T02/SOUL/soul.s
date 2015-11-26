@@ -95,7 +95,7 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			0x570
+		.set TIME_SZ,			0x330
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -332,7 +332,7 @@ callbacks_handler:
 		ldmfd sp!, {r2,r3}		@ Recupera o contexto
 
 		if_3:
-			cmp r0, r5			@ Compara tempo atual com tempo do vetor
+			cmp r0, r5			@ Compara distancia atual com distancia do vetor
 			bhi end_if_3		@ Pula o if se r0 > r5
 
 			@ if (r0 <= r5)
