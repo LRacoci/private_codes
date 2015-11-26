@@ -95,7 +95,7 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			0x330
+		.set TIME_SZ,			0x570
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -406,27 +406,44 @@ SVC_HANDLER:
 
 	msr CPSR_c, #SVC_MODE_I_0_F_0	@ SVC mode, interrupcoes abilitadas
 
-	sub r7, r7, #16				@ Subtrai o valor da syscall de r7
-	ldr lr, =end_svc_handler	@ Carrega em lr o valor da posicao
-								@ para retornar apos tratar a syscall
-	add pc, pc, r7, lsl #2		@ Faz um deslocamento em pc para pular para
-								@ a posicao correta no vetor de rotinas
-
-	@ Apesar de parecer inútil, esse comando 
-	@ é necessário para o salto na intstrução 
-	@ anterior dar certo
-	mov r0, r0 
+	@ Compara r7 pra entrar na syscall certa
+	cmp r7, #16
+	bleq read_sonar
+	beq end_svc_handler
 	
-	@ Vetor de rotinas que cuidam das varias syscalls
-	b read_sonar
-	b register_proximity_callback 
-	b set_motor_speed 
-	b set_motors_speed
-	b get_time
-	b set_time
-	b set_alarm
+
+	cmp r7, #17
+	bleq register_proximity_callback 
+	beq end_svc_handler
+	
+
+	cmp r7, #18
+	bleq set_motor_speed 
+	beq end_svc_handler
+	
+
+	cmp r7, #19
+	bleq set_motors_speed
+	beq end_svc_handler
+	
+
+	cmp r7, #20
+	beq get_time
+	beq end_svc_handler
+	
+
+	cmp r7, #21
+	bleq set_time
+	beq end_svc_handler
+	
+
+	cmp r7, #22
+	bleq set_alarm
+	beq end_svc_handler
+
 	@ Syscalls Personalizadas
-	b back_to_r0
+	cmp r7, #23
+	bleq back_to_r0
 
 	end_svc_handler:
 		ldmfd 	sp!, {r11}				@ Desempilha status anterior
@@ -723,7 +740,7 @@ delay_motors:					@ 	Nao tem parametros
 delay_sonar:					@ 	Nao tem parametros
 	stmfd sp!, {r4, lr}
 
-	mov r4, #0x1400				@ Inicializa o iterador com o valor maximo 0x1400
+	mov r4, #0x2000				@ Inicializa o iterador com o valor maximo 0x1400
 	loop_delay_2:
 		sub r4, r4, #1			@ Subtrai 1
 		cmp r4, #0				@ Compara com 0
