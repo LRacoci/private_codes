@@ -75,13 +75,13 @@ RESET_HANDLER:
 
 	initialize_stacks:
 
-		msr CPSR_c, IRQ_MODE_I_1_F_1 	@ IRQ mode, interrupcoes desabilitadas
+		msr CPSR_c, #IRQ_MODE_I_1_F_1 	@ IRQ mode, interrupcoes desabilitadas
 		ldr sp, =STACK_IRQ_BASE			@ Inicializa pilha sp_IRQ
 
-		msr CPSR_c, SYS_MODE_I_1_F_1 	@ SYS mode, interrupcoes desabilitadas
+		msr CPSR_c, #SYS_MODE_I_1_F_1 	@ SYS mode, interrupcoes desabilitadas
 		ldr sp, =STACK_SYS_BASE			@ Inicializa pilha sp_SYS
 
-		msr CPSR_c, SVC_MODE_I_1_F_1 	@ SVC mode, interrupcoes desabilitadas
+		msr CPSR_c, #SVC_MODE_I_1_F_1 	@ SVC mode, interrupcoes desabilitadas
 		ldr sp, =STACK_SVC_BASE			@ Inicializa pilha sp_SVC
 
 	set_gpt:
@@ -212,14 +212,14 @@ IRQ_HANDLER:
 		@ Mudar para o modo usuario habilitando interrupcoes
 		msr CPSR_c, #USR_MODE_I_0_F_0 
 		
-		stmfd sp!, {r3}					@ Salva contexto
+		stmfd sp!, {r3, lr}					@ Salva contexto
 
 			@ Tratamento dos alarmes em modo usuario
 			bl alarms_handler
 			@ Tratamento das Callbacks em modo usuario
 			bl callbacks_handler
 
-		ldmfd sp!, {r3}					@ Recupera contexto
+		ldmfd sp!, {r3, lr}					@ Recupera contexto
 		
 		@ Voltar do modo usuario
 		mov r0, r3						@ Status anterior ao modo USER 
@@ -235,7 +235,7 @@ IRQ_HANDLER:
 
 
 alarms_handler:
-	stmfd sp!, {r0-r7, lr} 		@ Salva Registradores Callee-save
+	stmfd sp!, {r0-r11, lr} 	@ Salva Registradores Callee-save
 
 	ldr r1, =active_alarms		@ Carrega o numero de alarmes
 	ldr r1, [r1]
@@ -294,11 +294,11 @@ alarms_handler:
 	ldr r1, =active_alarms		@ Passa o endereco do tamanho do vetor
 	bl vector_rectifier
 
-	ldmfd sp!, {r0-r7, pc} 		@ Recupera Registradores Callee-save
+	ldmfd sp!, {r0-r11, pc} 	@ Recupera Registradores Callee-save
 
 
 callbacks_handler:
-	stmfd sp!, {r0-r9, lr} 		@ Salva Registradores Callee-save
+	stmfd sp!, {r0-r11, lr} 	@ Salva Registradores Callee-save
 
 	ldr r2, =active_callbacks	@ Carrega o numero de callbacks
 	ldr r2, [r2]
@@ -346,7 +346,7 @@ callbacks_handler:
 		b for_3
 
 	end_for_3:
-	ldmfd sp!, {r0-r9, pc} 		@ Recupera Registradores Callee-save
+	ldmfd sp!, {r0-r11, pc} 	@ Recupera Registradores Callee-save
 
 
 vector_rectifier:				@ (r0) : struct			vetor
@@ -388,7 +388,7 @@ vector_rectifier:				@ (r0) : struct			vetor
 
 	end_for_2:
 
-	str r4, [r1]				@ Guarda o novo tamanho do vetor no endereco apropriado
+	str r4, [r1]			@ Guarda o novo tamanho do vetor no endereco apropriado
 	ldmfd sp!, {r4-r8, pc} 	@ Recupera Registradores Callee-save
 
 
@@ -396,36 +396,32 @@ SVC_HANDLER:
 	stmfd sp!, {r7, r11, lr}			@ Salva contexto
 	mrs r11, SPSR					 	@ Move registrador de status de retorno
 	stmfd sp!, {r11}					@ Guarda na pilha
-
-	msr CPSR_c, #SVC_MODE_I_0_F_0	@ SVC mode, interrupcoes abilitadas
-
-	sub r7, r7, #16				@ Subtrai o valor da syscall de r7
-	ldr lr, =end_svc_handler	@ Carrega em lr o valor da posicao
-								@ para retornar apos tratar a syscall
-	add pc, pc, r7, lsl #2		@ Faz um deslocamento em pc para pular para
-								@ a posicao correta no vetor de rotinas
-
-	@ Apesar de parecer inútil, esse comando 
-	@ é necessário para o salto na intstrução 
-	@ anterior dar certo
-	mov r0, r0 
 	
 	@ Vetor de rotinas que cuidam das varias syscalls
-	b read_sonar
-	b register_proximity_callback 
-	b set_motor_speed 
-	b set_motors_speed
-	b get_time
-	b set_time
-	b set_alarm
+	cmp r7, #16
+	bleq read_sonar
+	cmp r7, #17
+	bleq register_proximity_callback
+	cmp r7, #18
+	bleq set_motor_speed
+	cmp r7, #19
+	bleq set_motors_speed
+	cmp r7, #20
+	bleq get_time
+	cmp r7, #21
+	bleq set_time
+	cmp r7, #22
+	bleq set_alarm
+
 	@ Syscalls Personalizadas
-	b back_to_r0
+	cmp r7, #23
+	bleq back_to_r0
 
 	end_svc_handler:
-		ldmfd 	sp!, {r11}				@ Desempilha status anterior
+		ldmfd sp!, {r11}				@ Desempilha status anterior
 		msr SPSR, r11					@ Recupera status anterior
-		ldmfd 	sp!, {r7, r11, lr}		@ Recupera contexto
-		movs 	pc, lr
+		ldmfd sp!, {r7, r11, lr}		@ Recupera contexto
+		movs pc, lr
 
 
 read_sonar:						@ (r0) : unsigned char 		sonar_id, 
@@ -581,9 +577,6 @@ set_motor_speed:				@ (r0) : unsigned char 	id,
 	@ Guarda o valor de DR
 	str	r2, [r3, #GPIO_DR]
 
-	@ Realiza uma espera para se ter certeza que foi escrito no motor
-	bl delay_motors
-
 	@ Move o valor 0 para r0 identificando a corretude da syscall
 	mov r0, #0
 
@@ -620,9 +613,8 @@ set_motors_speed:				@ (r0) : unsigned char 	spd_m0,
 	bic r2, #(0b111111<<26)
 	orr r2, r1, lsl #26
 
-	@ Guarda o valor em DR e realiza uma espera
+	@ Guarda o valor em DR
 	str	r2, [r3, #GPIO_DR] 
-	bl delay_motors
 
 	@ Move 0 para r0 confirmando a validade da syscall
 	mov r0, #0
@@ -708,7 +700,7 @@ delay_motors:					@ 	Nao tem parametros
 	mov r4, #0					@ Inicializa o iterador
 	loop_delay_1:
 		add r4, r4, #1			@ Adiciona 1
-		cmp r4, #0x550			@ Compara com o maximo 0x1000
+		cmp r4, #0x1000			@ Compara com o maximo 0x1000
 	bls loop_delay_1			@ Salta para o inicio caso nao acabou
 
 	ldmfd sp!, {r4, pc}
@@ -717,7 +709,7 @@ delay_motors:					@ 	Nao tem parametros
 delay_sonar:					@ 	Nao tem parametros
 	stmfd sp!, {r4, lr}
 
-	mov r4, #0x550				@ Inicializa o iterador com o valor maximo 0x1400
+	mov r4, #0x4000				@ Inicializa o iterador com o valor maximo 0x1400
 	loop_delay_2:
 		sub r4, r4, #1			@ Subtrai 1
 		cmp r4, #0				@ Compara com 0
