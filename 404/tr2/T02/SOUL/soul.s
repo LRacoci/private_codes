@@ -100,7 +100,7 @@ RESET_HANDLER:
 		ldr r1, =GPT_BASE
 
 		@ Habilitar e configurar o clock_src para periférico
-		ldr r0, =0x41
+		mov r0, #0x41
 		str	r0, [r1, #GPT_CR]
 
 		@ Zerar o prescaler (GPT_PR)
@@ -184,17 +184,15 @@ RESET_HANDLER:
 
 
 IRQ_HANDLER:
-	stmfd sp!, {r0, r2, r3, r11, lr}	@ Salva contexto
+	stmfd sp!, {r0-r3, r11, lr}	@ Salva contexto
 	mrs r11, SPSR					 	@ Move registrador de status de retorno
 	stmfd sp!, {r11}					@ Guarda na pilha
 	
-
 	@ Informa ao GPT que o  processador 
 	@ já está ciente de que ocorreu a interrupção
 	ldr r2, =GPT_BASE
 	mov r0, #0x1
 	str r0, [r2, #GPT_SR]
-
 
 	@ Le o endereço do contador de tempo de sistema
 	ldr r2, =system_time
@@ -212,7 +210,7 @@ IRQ_HANDLER:
 	mrs r3, CPSR 						@ Salva modo atual pra voltar
 	
 		@ Mudar para o modo usuario habilitando interrupcoes
-		msr CPSR_c, USR_MODE_I_0_F_0 
+		msr CPSR_c, #USR_MODE_I_0_F_0 
 		
 		stmfd sp!, {r3}					@ Salva contexto
 
@@ -228,16 +226,16 @@ IRQ_HANDLER:
 		mov r7, #23						@ Identifica a syscall
 		svc 0x0
 	
-	ldmfd 	sp!, {r11}					@ Desempilha status anterior
+	ldmfd sp!, {r11}					@ Desempilha status anterior
 	msr SPSR, r11						@ Recupera o status anterior
-	ldmfd sp!, {r0, r2, r3, r11, lr}	@ Recupera contexto
+	ldmfd sp!, {r0-r3, r11, lr}	@ Recupera contexto
 	
-	sub 	lr, lr, #4					@ Ajusta o lr antes de retornar
-	movs 	pc, lr
+	sub lr, lr, #4					@ Ajusta o lr antes de retornar
+	movs pc, lr
 
 
 alarms_handler:
-	stmfd sp!, {r4-r6, lr} 		@ Salva Registradores Callee-save
+	stmfd sp!, {r0-r7, lr} 		@ Salva Registradores Callee-save
 
 	ldr r1, =active_alarms		@ Carrega o numero de alarmes
 	ldr r1, [r1]
@@ -296,11 +294,11 @@ alarms_handler:
 	ldr r1, =active_alarms		@ Passa o endereco do tamanho do vetor
 	bl vector_rectifier
 
-	ldmfd sp!, {r4-r6, pc} 		@ Recupera Registradores Callee-save
+	ldmfd sp!, {r0-r7, pc} 		@ Recupera Registradores Callee-save
 
 
 callbacks_handler:
-	stmfd sp!, {r5-r9, lr} 		@ Salva Registradores Callee-save
+	stmfd sp!, {r0-r9, lr} 		@ Salva Registradores Callee-save
 
 	ldr r2, =active_callbacks	@ Carrega o numero de callbacks
 	ldr r2, [r2]
@@ -348,7 +346,7 @@ callbacks_handler:
 		b for_3
 
 	end_for_3:
-	ldmfd sp!, {r5-r9, pc} 		@ Recupera Registradores Callee-save
+	ldmfd sp!, {r0-r9, pc} 		@ Recupera Registradores Callee-save
 
 
 vector_rectifier:				@ (r0) : struct			vetor
@@ -478,14 +476,16 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 		ldr r2, [r3, #GPIO_DR]	@ Carrega Valor de PSR
 		and r2, r2, #1			@ Isola a flag
 		cmp r2, #1				@ Compara flag com 1
+		beq fim_loop
 		@ Nao
 			@ Delay
 		stmfd sp!, {r3}			@ Salva o resgistrador caller-save
-		blne delay_sonar		@ Chama o delay enquanto flag != 1
+		bl delay_sonar			@ Chama o delay enquanto flag != 1
 		ldmfd sp!, {r3}			@ Recupera o contexto
 
-		bne loop_flag			@ Repete o loop
+		b loop_flag			@ Repete o loop
 
+	fim_loop:
 	@ SIM
 		@ Distancia <= Sonar_Data
 	ldr r2, [r3, #GPIO_DR]		@ Carrega Valor de PSR
@@ -495,7 +495,6 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 	mov r0, r2					@ Move a distancia para r0
 
 	end_read_sonar:
-		msr CPSR_c, #SVC_MODE_I_0_F_0 @ Reabilita interrupcoes
 		ldmfd sp!, {pc}
 
 
@@ -534,7 +533,7 @@ register_proximity_callback :	@ (r0) : unsigned char 	sensor_id,
     @ Incremento contador de alarmes
     add r3, r3, #1
     @ Grava de volta o contador incrementado
-    str r3,[r5]
+    str r3, [r5]
 
     @ Retorna 0 indicando sucesso
 	mov r0, #0
