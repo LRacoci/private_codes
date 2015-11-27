@@ -95,7 +95,7 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			1000
+		.set TIME_SZ,			0x570
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
@@ -209,37 +209,24 @@ IRQ_HANDLER:
 	@ Grava de volta o tempo do sistema incrementado
 	str r0, [r2]
 
-	@ Tratamento de alarmes e callbacks
-	mrs r3, CPSR 						@ Salva modo atual pra voltar
+	ldr r2, =busy					
+	ldr r2, [r2]
+	cmp r2, #1
+	beq end_irq_handler
+
+	@ Tratamento dos alarmes em modo usuario
+	bl alarms_handler
+	@ Tratamento das Callbacks em modo usuario
+	bl callbacks_handler
 	
-	stmfd sp!, {r0} 					@ Salva variáveis
-	
-		@ Mudar para o modo usuario habilitando interrupcoes
-		msr CPSR_c, #USR_MODE_I_0_F_0 
+	end_irq_handler:
+		ldmfd 	sp!, {r11}					@ Desempilha status anterior
+		bic r11, r11, #0x20
+		msr SPSR, r11						@ Recupera o status anterior
+		ldmfd sp!, {r0-r12, lr}				@ Recupera contexto
 		
-		stmfd sp!, {r3, lr}					@ Salva contexto
-
-			@ Tratamento dos alarmes em modo usuario
-			bl alarms_handler
-			@ Tratamento das Callbacks em modo usuario
-			bl callbacks_handler
-
-		ldmfd sp!, {r3, lr}					@ Recupera contexto
-		
-		@ Voltar do modo usuario
-		mov r0, r3						@ Status anterior ao modo USER 
-		mov r7, #23						@ Identifica a syscall
-		svc 0x0
-
-	ldmfd sp!, {r0}						@ Recupera contexto
-	
-
-	ldmfd 	sp!, {r11}					@ Desempilha status anterior
-	msr SPSR, r11						@ Recupera o status anterior
-	ldmfd sp!, {r0-r12, lr}				@ Recupera contexto
-	
-	sub 	lr, lr, #4					@ Ajusta o lr antes de retornar
-	movs 	pc, lr
+		sub 	lr, lr, #4					@ Ajusta o lr antes de retornar
+		movs 	pc, lr
 
 alarms_handler:
 stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
@@ -262,26 +249,31 @@ stmfd sp!, {r4-r12, lr} 		@ Salva Registradores Callee-save
 		ldr r5, [r2]			@ Carrega o endereco da funcao
 
 		if_1:
-			mov r6, r5			@ Copia o endereco da funcao
-			cmp r5, #0			@ Ve se a funcao ja foi marcada
-								@ como se estivesse finalizada
-			beq end_if_1		@ Pula o if se r5 == 0
-
-			cmp r5, #1			@ Ve se a funcao ja foi marcada
-								@ como se estivesse sendo executada
-			beq end_if_1		@ Pula o if se r5 == 1
-
 			cmp r3, r4			@ Compara tempo atual com tempo do vetor
 			blo end_if_1		@ Pula o if se r3 < r4
 
-			@ if (r5 != 0 && r3 >= r4 && r5 != 1)
-			mov r5, #1			@ Coloca o valor 1 em r5
-			str r5, [r2]		@ Marca a funcao a ser chamada para que
-								@ ela nao seja chamada na proxima vez
+			@ if (r3 >= r4)	
+			ldr r6, =busy		@ Carrega a flag que indica se o irq_handler esta ocupado
+			mov r7, #1			@ Poe 1 em r7
+			str r7, [r6]		@ Grava de volta o valor setado
 
-			stmfd sp!, {r0-r3}	@ Salva o contexto
-			blx r6				@ Pula para o codigo do usuario
-			ldmfd sp!, {r0-r3}	@ Recupera o contexto
+			stmfd sp!, {r0-r5, r6}		@ Salva o contexto
+
+
+			msr CPSR_c, #USR_MODE_I_0_F_0	@ Muda para modo usuario
+
+			stmfd sp!, {lr}		@ Salva o lr do usuario anterior
+			blx r5				@ Pula para o codigo do usuario
+			ldmfd sp!, {lr}		@ Recuperao lr antigo
+
+			mov r0, #IRQ_MODE_I_1_F_1	@ Parametro da syscall que e o proximo modo
+			mov r7, #23					@ Identificador da syscall
+			svc 0x0
+
+			ldmfd sp!, {r0-r5, r6}		@ Recupera o contexto
+
+			mov r7, #0			@ Desmarca a flag que indica se o irq_handler esta ocupado
+			str r7, [r6]		@ Grava de volta na memoria
 
 			mov r5, #0			@ Move o valor 0 para r5
 			str r5, [r2]		@ Marca a funcao que foi chamada dizendon que
@@ -336,14 +328,26 @@ callbacks_handler:
 			bhi end_if_3		@ Pula o if se r0 > r5
 
 			@ if (r0 <= r5)
-			mov r9, r6			@ Copia o endereco de salto da funcao
-			mov r6, #0			@ Coloca o valor 0 em r6
-			str r6, [r3]		@ Marca a funcao a ser chamada
-			
-			stmfd sp!, {r0-r3}	@ Salva o contexto
-			blx r9				@ Pula para o codigo do usuario
-			ldmfd sp!, {r0-r3}	@ Recupera o contexto
-			str r9, [r3]		@ Desmarca a funcao que foi chamada
+			ldr r7, =busy 		@ Carrega a flag que indica se o irq_handler esta ocupado
+			mov r9, #1			@ Poe 1 em r9
+			str r9, [r7]		@ Grava de volta o valor setado
+
+			stmfd sp!, {r0-r3, r7}	@ Salva o contexto
+
+			msr CPSR_c, #USR_MODE_I_0_F_0	@ Muda para modo usuario
+
+			stmfd sp!, {lr}		@ Salva o lr do usuario anterior
+			blx r6				@ Pula para o codigo do usuario
+			ldmfd sp!, {lr}		@ Recuperao lr antigo
+
+			mov r0, #IRQ_MODE_I_1_F_1	@ Parametro da syscall que e o proximo modo
+			mov r7, #23					@ Identificador da syscall
+			svc 0x0
+
+			ldmfd sp!, {r0-r3, r7}	@ Recupera o contexto
+
+			mov r9, #0			@ Desmarca a flag que indica se o irq_handler esta ocupado
+			str r9, [r7]		@ Grava de volta na memoria
 		
 		end_if_3:
 		add r3, r3, #4			@ Incrementa a posicao do vetor
@@ -429,6 +433,7 @@ SVC_HANDLER:
 	end_svc_handler:
 		ldmfd 	sp!, {r11}				@ Desempilha status anterior
 		msr SPSR, r11					@ Recupera status anterior
+		bic r11, r11, #0x20
 		ldmfd 	sp!, {r1-r12, lr}		@ Recupera contexto
 		movs 	pc, lr
 
@@ -755,6 +760,10 @@ limbo_42:
 system_time:
 .word 0x0
  
+@ Indica se algum alarme ou callback esta sendo tratado
+busy:
+.word 0x0
+
 @ Alarmes
 .set MAX_ALARMS, 0x8
 .set ALARMS_SIZE, 0x8
