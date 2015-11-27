@@ -95,17 +95,17 @@ RESET_HANDLER:
 		.set GPT_IR,			0xC
 
 		@ Constante do contador de ciclos para gerar uma interrupcao
-		.set TIME_SZ,			0x570
+		.set TIME_SZ,			1000
 		
 		@ Carrega a base do GPT
 		ldr r1, =GPT_BASE
 
 		@ Habilitar e configurar o clock_src para periférico
-		ldr r0, =0x41
+		mov r0, #0x41
 		str	r0, [r1, #GPT_CR]
 
 		@ Zerar o prescaler (GPT_PR)
-		ldr r0, =0x0
+		mov r0, #0x0
 		str	r0, [r1, #GPT_PR]
 
 		@ Colocar em GPT_OCR1 o valor que gera 
@@ -114,7 +114,7 @@ RESET_HANDLER:
 		str	r0, [r1, #GPT_OCR1]
 
 		@ Habilitar a interrupção Output Compare Channel 1
-		ldr r0, =0b1
+		mov r0, #0b1
 		str	r0, [r1, #GPT_IR]
 
 	set_tzic:
@@ -332,7 +332,7 @@ callbacks_handler:
 		ldmfd sp!, {r2,r3}		@ Recupera o contexto
 
 		if_3:
-			cmp r0, r5			@ Compara distancia atual com distancia do vetor
+			cmp r0, r5			@ Compara tempo atual com tempo do vetor
 			bhi end_if_3		@ Pula o if se r0 > r5
 
 			@ if (r0 <= r5)
@@ -406,44 +406,27 @@ SVC_HANDLER:
 
 	msr CPSR_c, #SVC_MODE_I_0_F_0	@ SVC mode, interrupcoes abilitadas
 
-	@ Compara r7 pra entrar na syscall certa
-	cmp r7, #16
-	bleq read_sonar
-	beq end_svc_handler
+	sub r7, r7, #16				@ Subtrai o valor da syscall de r7
+	ldr lr, =end_svc_handler	@ Carrega em lr o valor da posicao
+								@ para retornar apos tratar a syscall
+	add pc, pc, r7, lsl #2		@ Faz um deslocamento em pc para pular para
+								@ a posicao correta no vetor de rotinas
+
+	@ Apesar de parecer inútil, esse comando 
+	@ é necessário para o salto na intstrução 
+	@ anterior dar certo
+	mov r0, r0 
 	
-
-	cmp r7, #17
-	bleq register_proximity_callback 
-	beq end_svc_handler
-	
-
-	cmp r7, #18
-	bleq set_motor_speed 
-	beq end_svc_handler
-	
-
-	cmp r7, #19
-	bleq set_motors_speed
-	beq end_svc_handler
-	
-
-	cmp r7, #20
-	beq get_time
-	beq end_svc_handler
-	
-
-	cmp r7, #21
-	bleq set_time
-	beq end_svc_handler
-	
-
-	cmp r7, #22
-	bleq set_alarm
-	beq end_svc_handler
-
+	@ Vetor de rotinas que cuidam das varias syscalls
+	b read_sonar
+	b register_proximity_callback 
+	b set_motor_speed 
+	b set_motors_speed
+	b get_time
+	b set_time
+	b set_alarm
 	@ Syscalls Personalizadas
-	cmp r7, #23
-	bleq back_to_r0
+	b back_to_r0
 
 	end_svc_handler:
 		ldmfd 	sp!, {r11}				@ Desempilha status anterior
@@ -480,7 +463,7 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
 
 	stmfd sp!, {r2,r3}			@ Salva os registradores caller-save
-	bl delay_sonar				@ Salta para o loop de espera
+	bl delay_sonar_15ms			@ Salta para o loop de espera
 	ldmfd sp!, {r2,r3}			@ Recupera os registradores
 
 	@ TRIGGER <= 1; Delay
@@ -488,7 +471,7 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 	str	r2, [r3, #GPIO_DR] 		@ Grava em DR
 
 	stmfd sp!, {r2,r3}			@ Salva os registradores caller-save
-	bl delay_sonar				@ Salta para o loop de espera
+	bl delay_sonar_15ms			@ Salta para o loop de espera
 	ldmfd sp!, {r2,r3}			@ Recupera os registradores
 
 	@ TRIGGER <= 0;
@@ -503,7 +486,7 @@ read_sonar:						@ (r0) : unsigned char 		sonar_id,
 		@ Nao
 			@ Delay
 		stmfd sp!, {r3}			@ Salva o resgistrador caller-save
-		blne delay_sonar		@ Chama o delay enquanto flag != 1
+		blne delay_sonar_10ms	@ Chama o delay enquanto flag != 1
 		ldmfd sp!, {r3}			@ Recupera o contexto
 
 		bne loop_flag			@ Repete o loop
@@ -737,14 +720,25 @@ delay_motors:					@ 	Nao tem parametros
 
 	ldmfd sp!, {r4, pc}
 
-delay_sonar:					@ 	Nao tem parametros
+delay_sonar_15ms:				@ 	Nao tem parametros
 	stmfd sp!, {r4, lr}
 
-	mov r4, #0x2000				@ Inicializa o iterador com o valor maximo 0x1400
-	loop_delay_2:
+	ldr r4, =1700				@ Inicializa o iterador com o valor maximo 0x1400
+	loop_delay_15:
 		sub r4, r4, #1			@ Subtrai 1
 		cmp r4, #0				@ Compara com 0
-	bhi loop_delay_2			@ Salta para o inicio caso nao seja 0
+	bhi loop_delay_15			@ Salta para o inicio caso nao seja 0
+
+	ldmfd sp!, {r4, pc}
+
+delay_sonar_10ms:					@ 	Nao tem parametros
+	stmfd sp!, {r4, lr}
+
+	ldr r4, =1200				@ Inicializa o iterador com o valor maximo 0x1400
+	loop_delay_10:
+		sub r4, r4, #1			@ Subtrai 1
+		cmp r4, #0				@ Compara com 0
+	bhi loop_delay_10			@ Salta para o inicio caso nao seja 0
 
 	ldmfd sp!, {r4, pc}
 
