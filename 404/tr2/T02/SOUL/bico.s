@@ -53,9 +53,7 @@ read_sonar: 						@ 	(r0) : unsigned char 	sonar_id,
 	mov 	r4, 	r1				@ Salva dist em um registrador callee-save
 	mov 	r7, 	#16
 	svc 	0x0
-	cmp 	r4, 	#0				@ Compara se o endereco passado por parametro 
-@										eh valido [nao eh o zero (NULL)]
-	strne 	r0, 	[r4]			@ Se for, Grava o retorno da sys-call em dist
+	strh	r0, 	[r4]			@  Grava o retorno da sys-call em dist
 
 		ldmfd sp!, {r4, r7, pc} 	@ Restaura os registradores e retorna
 
@@ -129,3 +127,4 @@ set_time:							@ 	(r0) : unsigned int 	t
 	mov r7, #21						@ Identifica a syscall 
 	svc 0x0
 		ldmfd sp!, {r7, pc}			@ Restaura os registradores e retorna
+

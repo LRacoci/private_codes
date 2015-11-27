@@ -39,7 +39,7 @@ all: disk.img
 SOUL.x: $(SOUL_OBJS)
 	$(LD) $^ -o $@ $(LD_FLAGS) --section-start=.iv=0x778005e0 -Ttext=0x77800700 -Tdata=0x77801800 -e 0x778005e0
 
-LOCO.x: ronda.o bico.o
+LOCO.x: loco.o bico.o
 	$(LD) $^ -o $@ $(LD_FLAGS) -Ttext=0x77802000 
 
 disk.img: SOUL.x LOCO.x
@@ -66,7 +66,7 @@ run_gdb: disk.img
 gdb: disk.img
 	arm-eabi-gdb SOUL.x --command=gdb_initialization
 gdb_loco: disk.img
-	arm-eabi-gdb LOCO.x --command=gdb_initialization
+	arm-eabi-gdb LOCO.x --command=gdb_loco
 
 # Abre a sessao do player
 player:

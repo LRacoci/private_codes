@@ -41,24 +41,14 @@ void search_wall();
 
 void nana();
 
-void para1();
-
-void para2();
-	
-unsigned int aux;
-
 /* Função principal */
 void _start(void) {
-	int a = 1;
+	int a;
 
-
-	set_time(0);
-	aux = get_time() + 5;
-	add_alarm(para1, aux);
-
-	set_motors_speed(0, 10);
+	set_motors_speed(10, 10);
 
 	do {
+		read_sonar(3, &a);
 		delay();
 	} while (1);
 
@@ -71,15 +61,7 @@ void delay()
 	for(i = 0; i < 10000; i++ );  
 }
 
-void para1() {
-	aux = get_time() + 5;
-	add_alarm(para2, aux);
-	set_motors_speed(0, 0);
-}
 
-void para2() {
-	set_motors_speed(10, 10);
-}
 
 void search_wall(){
 	unsigned short s3, s4;
