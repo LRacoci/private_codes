@@ -1,8 +1,7 @@
 #include "bico.h" /* Robot control API */
 
 #define LIMITE 1024
-#define AVG_LIMITE_PAREDE 512
-#define STDEV_LIMITE_PAREDE 256
+
 #define TURN_VEL 10
 #define VEL 15
 #define UNIDADE_DE_TEMPO 1

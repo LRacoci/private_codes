@@ -49,18 +49,10 @@ unsigned int aux;
 
 /* Função principal */
 void _start(void) {
-	int a = 1;
+	unsigned int v[16];
 
 
-	set_time(0);
-	aux = get_time() + 5;
-	add_alarm(para1, aux);
-
-	set_motors_speed(0, 10);
-
-	do {
-		delay();
-	} while (1);
+	read_sonars(v);
 
 }
 /* Spend some time doing nothing. */
