@@ -1,0 +1,21 @@
+[0;92mComeçando Primeira Montagem
+pos: 000e; 1[1]: .org
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 00Ae; 2[1]: ADD
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+[0;92mTerminada primeira montagem
+00A 05 000 00 000
+
+[0;92mComeçando Segunda Montagem
+pos: 000e; 1[1]: .org
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+pos: 00Ae; 2[1]: ADD
+[0;97m [0;94m[\n(1)]
+[0;94m[\n(1)]
+
+[0;92mSaída do programa
+
+[0;92mLiberando Memória
