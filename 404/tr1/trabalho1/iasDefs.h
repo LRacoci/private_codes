@@ -1,1 +1,0 @@
-#define IAS_MAX_LINE_NUMBER 1024

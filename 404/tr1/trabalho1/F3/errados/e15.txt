@@ -1,5 +1,0 @@
-.set abc 1
-.set abc 1
-ADD "0"
-loop:
-loop:

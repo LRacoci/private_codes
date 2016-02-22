@@ -1,2 +1,0 @@
-.set SYM 10
-.wfill SYM 22
